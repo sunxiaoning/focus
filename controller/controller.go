@@ -3,47 +3,49 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"focus/filter"
 	"focus/types"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"reflect"
 )
 
-type Handle func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error
-
-type Controller struct {
-	Path   string
-	Method string
-	Handle Handle
-}
-
-func NewController(path string, method string, handle Handle) *Controller {
-	return &Controller{
+func NewController(path string, method string, handle types.Handle) *types.Controller {
+	return &types.Controller{
 		Path:   path,
 		Method: method,
 		Handle: handle,
 	}
 }
 
-var controllers = []*Controller{
+var controllers = []*types.Controller{
 	Hi, Hello, Err,
 }
 
 func InitRouter() *mux.Router {
 	router := mux.NewRouter()
 	for _, controller := range controllers {
-		router.Path(controller.Path).Methods(controller.Method).Handler(filter(controller))
+		router.Path(controller.Path).Methods(controller.Method).Handler(handle(controller))
 	}
 	return router
 }
 
-func filter(controller *Controller) http.HandlerFunc {
+func handle(controller *types.Controller) http.HandlerFunc {
 	pctx := context.Background()
 	return func(rw http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithCancel(pctx)
 		defer cancel()
+
+		// 过滤器执行
+		if err := filter.Process(ctx, rw, req); err != nil {
+			handleErrResponse(rw, err)
+			return
+		}
+
+		// 执行Controller逻辑
 		if err := controller.Handle(ctx, rw, req); err != nil {
-			logrus.Error("handle error: ", err)
 			handleErrResponse(rw, err)
 		}
 		return
@@ -52,21 +54,34 @@ func filter(controller *Controller) http.HandlerFunc {
 }
 
 func handleErrResponse(rw http.ResponseWriter, err error) {
-	appError := err.(*types.FocusError)
-	var code int
-	if appError.Code == types.SystemError {
-		code = http.StatusInternalServerError
-	} else if appError.Code == types.InvalidParamError {
-		code = http.StatusBadRequest
-	} else {
-		code = http.StatusOK
-	}
+	logrus.Error("handle error: ", err)
+	var httpstatus int
+	var errcode int
+	var errmsg string
 	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(code)
+	if (reflect.TypeOf(err) != reflect.TypeOf(&types.FocusError{})) {
+		logrus.Errorf("unexpected error! err: %s", err)
+		httpstatus = http.StatusInternalServerError
+		errcode = types.SystemError
+		errmsg = fmt.Sprintf("unexpected error! err: %s", err)
+	} else {
+		appError := err.(*types.FocusError)
+		if appError.Code == types.SystemError {
+			httpstatus = http.StatusInternalServerError
+		} else if appError.Code == types.InvalidParamError {
+			httpstatus = http.StatusBadRequest
+		} else {
+			httpstatus = http.StatusOK
+		}
+		errcode = appError.Code
+		errmsg = appError.Message
+	}
+
+	rw.WriteHeader(httpstatus)
 	encoder := json.NewEncoder(rw)
 	encoder.SetEscapeHTML(false)
 	res := make(map[string]interface{})
-	res[types.ErrCode] = appError.Code
-	res[types.ErrMsg] = appError.Message
+	res[types.ErrCode] = errcode
+	res[types.ErrMsg] = errmsg
 	encoder.Encode(res)
 }

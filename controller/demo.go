@@ -23,5 +23,6 @@ func hello(ctx context.Context, rw http.ResponseWriter, req *http.Request) error
 var Err = NewController("/err", http.MethodGet, err)
 
 func err(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+	// return errors.New("divide")
 	return types.NewErr(types.SystemError, "未知异常！")
 }
