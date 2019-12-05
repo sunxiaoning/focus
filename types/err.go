@@ -13,9 +13,12 @@ const (
 )
 
 const (
+	Success           = 0
 	SystemError       = 9999
-	InvalidParamError = 8001
-	BusinessError     = 5001
+	InvalidParamError = 9998
+	RepeatRequest     = 9997
+	NeedAuthError     = 9996
+	UserNotFound      = 5001
 )
 
 func NewErr(code int, msg string) error {

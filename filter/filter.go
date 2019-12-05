@@ -9,12 +9,13 @@ import (
 )
 
 var filters = []*types.Filter{
-	{},
+	User,
 }
 
 var (
 	pubPaths = []string{
 		"/login",
+		"/hello",
 	}
 )
 
@@ -42,15 +43,15 @@ func isMatched(filter *types.Filter, req *http.Request) (isMatched bool, err err
 	if filter.Paths == nil || len(filter.Paths) <= 0 {
 		return false, err
 	}
-	if filter.Paths[0] == "*" {
-		return true, nil
-	}
 	if filter.ExculdePaths != nil && len(filter.ExculdePaths) >= 1 {
 		for _, excludePath := range filter.ExculdePaths {
 			if strings.Contains(req.URL.Path, excludePath) {
 				return false, nil
 			}
 		}
+	}
+	if filter.Paths[0] == "*" {
+		return true, nil
 	}
 	for _, path := range filter.Paths {
 		if strings.Contains(req.URL.Path, path) {

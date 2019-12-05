@@ -12,3 +12,11 @@ type Controller struct {
 	Method string
 	Handle Handle
 }
+
+func NewController(path string, method string, handle Handle) *Controller {
+	return &Controller{
+		Path:   path,
+		Method: method,
+		Handle: handle,
+	}
+}

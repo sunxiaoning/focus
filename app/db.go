@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"focus/cfg"
 	"github.com/cenkalti/backoff"
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func ReConnectDB() {
 func reConnectDB() error {
 	logrus.Info("start to check DB status...")
 	var err error = nil
-	if err = FocusCtx.DB.DB().Ping(); err != nil {
+	if err = cfg.FocusCtx.DB.DB().Ping(); err != nil {
 		err = configDB()
 	}
 	logrus.Info("check DB status end...")
@@ -34,8 +35,8 @@ func reConnectDB() error {
 }
 
 func configDB() error {
-	cfg := FocusCtx.Cfg
-	dbConfig := cfg.Database
+	oldCfg := cfg.FocusCtx.Cfg
+	dbConfig := oldCfg.Database
 	db, err := gorm.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", dbConfig.Username, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.DBName))
 	if err != nil {
 		return err
@@ -46,7 +47,7 @@ func configDB() error {
 	db.DB().SetMaxIdleConns(dbConfig.MaxIdleConns)
 	db.DB().SetMaxOpenConns(dbConfig.MaxOpenConns)
 	testDB(db)
-	FocusCtx.DB = db
+	cfg.FocusCtx.DB = db
 	return nil
 }
 

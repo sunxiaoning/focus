@@ -1,6 +1,7 @@
 package app
 
 import (
+	"focus/cfg"
 	"github.com/scue/go-logrotate"
 	"github.com/sirupsen/logrus"
 )
@@ -8,7 +9,7 @@ import (
 const DefaultTimeFormat = "2006-01-02 15:04:05.000"
 
 func InitLog() {
-	serverConfig := FocusCtx.Cfg.Server
+	serverConfig := cfg.FocusCtx.Cfg.Server
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: DefaultTimeFormat,

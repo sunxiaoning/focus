@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"focus/controller/user"
 	"focus/filter"
 	"focus/types"
 	"github.com/gorilla/mux"
@@ -12,16 +13,8 @@ import (
 	"reflect"
 )
 
-func NewController(path string, method string, handle types.Handle) *types.Controller {
-	return &types.Controller{
-		Path:   path,
-		Method: method,
-		Handle: handle,
-	}
-}
-
 var controllers = []*types.Controller{
-	Hi, Hello, Err,
+	Hi, Hello, Err, usercontroller.Login,
 }
 
 func InitRouter() *mux.Router {

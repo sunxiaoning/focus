@@ -1,14 +1,15 @@
 package app
 
 import (
+	"focus/cfg"
 	"github.com/robfig/cron"
 )
 
 func InitTask() {
 	task := cron.New()
-	task.AddFunc(FocusCtx.Cfg.Database.CheckDBIntervalCron, ReConnectDB)
+	task.AddFunc(cfg.FocusCtx.Cfg.Database.CheckDBIntervalCron, ReConnectDB)
 	task.Start()
 	defer task.Stop()
-	FocusCtx.Task = task
+	cfg.FocusCtx.Task = task
 	select {}
 }

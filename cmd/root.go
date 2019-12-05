@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"focus/app"
+	"focus/cfg"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ import (
 )
 
 var (
-	runtimeConfig = &app.RuntimeConfig{}
+	runtimeConfig = &cfg.RuntimeConfig{}
 	cfgFile       string
 )
 
@@ -57,7 +58,7 @@ func RunServer() error {
 	if err := app.InitDB(); err != nil {
 		return err
 	}
-	defer app.FocusCtx.DB.Close()
+	defer cfg.FocusCtx.DB.Close()
 	app.InitServer()
 	go app.InitTask()
 	app.StartServer()
@@ -87,7 +88,7 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	rootCmd.Flags().StringVar(&runtimeConfig.Env, "env", "alpha", "server env")
-	rootCmd.Flags().StringVar(&runtimeConfig.AesKey, "aeskey", "", "server aeskey")
+	rootCmd.Flags().StringVar(&runtimeConfig.SecretKeyPath, "", "", "server aeskey")
 
 }
 

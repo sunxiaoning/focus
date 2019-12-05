@@ -1,117 +1,52 @@
 package app
 
 import (
-	"focus/types"
+	"focus/cfg"
 	"focus/util"
-	"os"
+	"io/ioutil"
+	"path"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
-const (
-	LogFilePath = "/Users/william/logs/focus/app.log"
-)
-
-type RuntimeConfig struct {
-	Env string
-	AesKey string
-}
-
-type ServerConfig struct {
-
-	// 服务器监听端口
-	ListenPort int
-
-	// 服务器运行环境
-	Env string
-
-	// 日志文件路径
-	LogFilePath string
-}
-
-var defaultServer = &ServerConfig{
-	ListenPort: 7001,
-	Env:        "alpha",
-}
-
-type DatabaseConfig struct {
-	Host                string
-	Port                string
-	DBName              string
-	Username            string
-	Password            string
-	ConnMaxLifetime     time.Duration
-	CheckDBIntervalCron string
-	MaxIdleConns        int
-	MaxOpenConns        int
-}
-
-var defaultDatabase = &DatabaseConfig{
-	Host: "wuPq8Hw7CcWds+ou4mpb+FfO2m+Ga+7xzdNmKdLBu+A=",
-	Port: "++OyfMhlTMCqbmzDf3L/mA==",
-	DBName:              "gRAe9ihlDR8E66uLy0+avA==",
-	Username:            "4cRAe7/oBdX0EwSFtfypBA==",
-	Password:            "xpDXApIMNdkMS5HjrO766g==",
-	ConnMaxLifetime:     time.Second * 10,
-	CheckDBIntervalCron: "0/10 * * * * ?",
-	MaxIdleConns:        10,
-	MaxOpenConns:        200,
-}
-
-type Cfg struct {
-	Server   *ServerConfig
-	Database *DatabaseConfig
-}
-
-func InitCfg(runtimeConfig *RuntimeConfig) error {
-	if strings.TrimSpace(runtimeConfig.Env) != "" {
-		defaultServer.Env = runtimeConfig.Env
-	}
-	if defaultServer.Env == "prod" {
-		if err := os.MkdirAll(filepath.Dir(LogFilePath), 0755); err != nil {
-			return err
-		}
-		defaultServer.LogFilePath = LogFilePath
-	}
-	if len(strings.TrimSpace(runtimeConfig.AesKey)) <= 0 {
-		return types.NewErr(types.SystemError, "aeskey can't be empty!")
-	}
-	if err := decrpytCfg(runtimeConfig) ; err != nil {
-		return err
-	}
-	FocusCtx.Cfg = &Cfg{
-		Server:   defaultServer,
-		Database: defaultDatabase,
-	}
-	return nil
-}
-
-func decrpytCfg(runtimeConfig *RuntimeConfig) error {
-	host, err := util.AESUtil.Decrypt(runtimeConfig.AesKey, defaultDatabase.Host)
+func InitCfg(runtimeConfig *cfg.RuntimeConfig) error {
+	cfg.Cfg.Runtime = runtimeConfig
+	defaultServer, err := cfg.DefaultServer.GetDefaultCfg(runtimeConfig.Env)
+	serverConfig := defaultServer.(*cfg.ServerCfg)
 	if err != nil {
 		return err
 	}
-	defaultDatabase.Host = host
-	port, err := util.AESUtil.Decrypt(runtimeConfig.AesKey, defaultDatabase.Port)
+	if strings.TrimSpace(runtimeConfig.SecretKeyPath) != "" {
+		serverConfig.SecretKey.FilePath = runtimeConfig.SecretKeyPath
+	}
+	rsaPriKeyFile := path.Join(serverConfig.SecretKey.FilePath, cfg.PriKeyFileName)
+	serverConfig.SecretKey.RsAKey.PriKey, err = util.DefaultEncryptor.ParseKeyFromFile(rsaPriKeyFile)
 	if err != nil {
 		return err
 	}
-	defaultDatabase.Port = port
-	dbname, err := util.AESUtil.Decrypt(runtimeConfig.AesKey, defaultDatabase.DBName)
+	rsaPubKeyFile := path.Join(serverConfig.SecretKey.FilePath, cfg.PubKeyFileName)
+	serverConfig.SecretKey.RsAKey.PubKey, err = util.DefaultEncryptor.ParseKeyFromFile(rsaPubKeyFile)
 	if err != nil {
 		return err
 	}
-	defaultDatabase.DBName = dbname
-	username, err := util.AESUtil.Decrypt(runtimeConfig.AesKey, defaultDatabase.Username)
+	aesKeyFile := path.Join(serverConfig.SecretKey.FilePath, cfg.AesKeyFileName)
+	aesKeyBytes, err := ioutil.ReadFile(aesKeyFile)
 	if err != nil {
 		return err
 	}
-	defaultDatabase.Username = username
-	dbpasswd, err := util.AESUtil.Decrypt(runtimeConfig.AesKey, defaultDatabase.Password)
+	aesKey, err := util.DefaultEncryptor.Decrypt(serverConfig.SecretKey.RsAKey.PriKey, string(aesKeyBytes))
 	if err != nil {
 		return err
 	}
-	defaultDatabase.Password = dbpasswd
+	serverConfig.SecretKey.AesKey = aesKey
+	cfg.Cfg.Server = serverConfig
+	defaultDatabase, err := cfg.DefaultDatabase.GetDefaultCfg(runtimeConfig.Env)
+	if err != nil {
+		return err
+	}
+	cfg.Cfg.Database = defaultDatabase.(*cfg.DatabaseConfig)
+	if err := util.DefaultFileHelper.CreateDirectory(filepath.Dir(defaultServer.(*cfg.ServerCfg).LogFilePath)); err != nil {
+		return err
+	}
 	return nil
 }

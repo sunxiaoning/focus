@@ -1,6 +1,7 @@
 package app
 
 import (
+	"focus/cfg"
 	"focus/controller"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -16,14 +17,14 @@ type Server struct {
 func InitServer() {
 	router := controller.InitRouter()
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort("127.0.0.1", strconv.Itoa(FocusCtx.Cfg.Server.ListenPort)),
+		Addr:    net.JoinHostPort("127.0.0.1", strconv.Itoa(cfg.FocusCtx.Cfg.Server.ListenPort)),
 		Handler: router,
 	}
-	FocusCtx.HttpServer = httpServer
+	cfg.FocusCtx.HttpServer = httpServer
 }
 
 func StartServer() {
-	if err := FocusCtx.HttpServer.ListenAndServe(); err != nil {
+	if err := cfg.FocusCtx.HttpServer.ListenAndServe(); err != nil {
 		logrus.Fatal("Fail to start http server: ", err)
 	}
 }
