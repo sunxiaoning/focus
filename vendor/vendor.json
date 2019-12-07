@@ -15,6 +15,18 @@
 			"revisionTime": "2019-10-07T09:55:39Z"
 		},
 		{
+			"checksumSHA1": "bE6Z+IptruBvA+iZTBPjjNqzRRI=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "15462c1d60d42ecca11d6ef9fec0b0afd5833459",
+			"revisionTime": "2019-11-21T06:26:41Z"
+		},
+		{
+			"checksumSHA1": "oUtU1Z0YIhbjb+bfYSkzlim9FD4=",
+			"path": "github.com/gorilla/mux",
+			"revision": "49c01487a141b49f8ffe06277f3dca3ee80a55fa",
+			"revisionTime": "2019-11-21T17:05:00Z"
+		},
+		{
 			"checksumSHA1": "JR0TXUn1a8EadTmG8MQU/jCqNsc=",
 			"path": "github.com/hashicorp/hcl",
 			"revision": "914dc3f8dd7c463188c73fc47e9ced82a6e421ca",
@@ -87,6 +99,12 @@
 			"revisionTime": "2019-11-19T08:08:00Z"
 		},
 		{
+			"checksumSHA1": "eECxSkwh0WmhLwaxHfkvcLOWS08=",
+			"path": "github.com/jinzhu/gorm/dialects/mysql",
+			"revision": "79a77d771dee4e4b60e9c543e8663bbc80466670",
+			"revisionTime": "2019-12-06T14:22:28Z"
+		},
+		{
 			"checksumSHA1": "iqeSAF7imnVsW+iqLqf6kkYn1VU=",
 			"path": "github.com/jinzhu/inflection",
 			"revision": "f5c5f50e6090ae76a29240b61ae2a90dd810112e",
@@ -101,6 +119,24 @@
 		{
 			"path": "github.com/jmcvetta/randutil.git",
 			"revision": ""
+		},
+		{
+			"checksumSHA1": "EZ8918nOmyJ2FMkAgF2wl/SGT5U=",
+			"path": "github.com/klauspost/compress/flate",
+			"revision": "438db640fd672278e44bb9bec0b979358e7e9c76",
+			"revisionTime": "2019-12-04T08:18:19Z"
+		},
+		{
+			"checksumSHA1": "hF7pgsFBraBAmxj5o5Lb1wJBusc=",
+			"path": "github.com/klauspost/compress/gzip",
+			"revision": "438db640fd672278e44bb9bec0b979358e7e9c76",
+			"revisionTime": "2019-12-04T08:18:19Z"
+		},
+		{
+			"checksumSHA1": "KQ77MI2l4iDQE0Z/DiDeO0S963o=",
+			"path": "github.com/klauspost/compress/zlib",
+			"revision": "438db640fd672278e44bb9bec0b979358e7e9c76",
+			"revisionTime": "2019-12-04T08:18:19Z"
 		},
 		{
 			"checksumSHA1": "Aulh7C5SVOA4Jzt5eHNH6197Mbk=",
@@ -139,6 +175,12 @@
 			"revisionTime": "2018-05-05T20:34:41Z",
 			"version": "v1.2.0",
 			"versionExact": "v1.2.0"
+		},
+		{
+			"checksumSHA1": "dCCkAxt3l5WTy4yg7pHNUPU2rCM=",
+			"path": "github.com/scue/go-logrotate",
+			"revision": "24d66ce12a2a40788d47c7e94b3f5cba04578ec3",
+			"revisionTime": "2019-11-11T07:53:21Z"
 		},
 		{
 			"checksumSHA1": "a+HW4KfxlTA1ExAUrW8w6EKYoxM=",
@@ -213,6 +255,30 @@
 			"revisionTime": "2019-09-17T10:36:37Z"
 		},
 		{
+			"checksumSHA1": "ua2PK6PDbNCyzxOmakS3BJoF8Co=",
+			"path": "github.com/valyala/bytebufferpool",
+			"revision": "cdfbe9377474227bb42120c1e22fd4433e7f69bf",
+			"revisionTime": "2018-09-05T18:22:47Z"
+		},
+		{
+			"checksumSHA1": "Yrg9aBBTVz5FkpgBjTU+i7aIUVk=",
+			"path": "github.com/valyala/fasthttp",
+			"revision": "a266a926ae7cf645c53b201a499d8a69e4566aaf",
+			"revisionTime": "2019-12-01T09:45:29Z"
+		},
+		{
+			"checksumSHA1": "nz4cJHHBHa8feIi/HbQn0kx+lio=",
+			"path": "github.com/valyala/fasthttp/fasthttputil",
+			"revision": "a266a926ae7cf645c53b201a499d8a69e4566aaf",
+			"revisionTime": "2019-12-01T09:45:29Z"
+		},
+		{
+			"checksumSHA1": "Q45Jg9WtUVv0KWDIRz97NCpu57o=",
+			"path": "github.com/valyala/fasthttp/stackless",
+			"revision": "a266a926ae7cf645c53b201a499d8a69e4566aaf",
+			"revisionTime": "2019-12-01T09:45:29Z"
+		},
+		{
 			"path": "golang.org/x/sys/unix",
 			"revision": ""
 		},
@@ -225,6 +291,12 @@
 			"revision": ""
 		},
 		{
+			"checksumSHA1": "MpBvKi+rNRB9eV6zc1MJyeK87ew=",
+			"path": "golang.org/x/time/rate",
+			"revision": "555d28b269f0569763d25dbe1a237ae74c6bcc82",
+			"revisionTime": "2019-10-23T19:31:36Z"
+		},
+		{
 			"checksumSHA1": "HlmFQMS9Rr2K0RTC+FVBizqY6e0=",
 			"path": "gopkg.in/yaml.v2",
 			"revision": "f90ceb4f409096b60e2e9076b38b304b8246e5fa",
@@ -232,6 +304,10 @@
 		},
 		{
 			"path": "https://github.com/scue/go-logrotate.git",
+			"revision": ""
+		},
+		{
+			"path": "olang.org/x/time/rate",
 			"revision": ""
 		}
 	],
