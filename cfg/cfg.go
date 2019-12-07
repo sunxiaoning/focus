@@ -43,14 +43,19 @@ type ctx struct {
 	// 定时任务
 	Task *cron.Cron
 
-	// 用户信息
+	// 用户信息缓存
 	CurrentUser *sync.Map
+
+	// 访问限流器
+	VisitorLimiter *sync.Map
 }
 
 var UserMap = &sync.Map{}
 
+var VisitorLimiter = &sync.Map{}
+
 // 应用上下文
-var FocusCtx = &ctx{Cfg, nil, nil, nil, nil, UserMap}
+var FocusCtx = &ctx{Cfg, nil, nil, nil, nil, UserMap, VisitorLimiter}
 
 // 默认配置
 type DefaultCfgVal interface{}

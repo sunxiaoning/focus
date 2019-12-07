@@ -3,9 +3,9 @@ package usercontroller
 import (
 	"context"
 	"focus/cfg"
-	"focus/filter"
 	"focus/service/user"
 	"focus/types"
+	"focus/types/consts"
 	"focus/types/user"
 	"focus/util"
 	"net/http"
@@ -43,7 +43,7 @@ func login(ctx context.Context, rw http.ResponseWriter, req *http.Request) error
 
 func writeUserCookie(rw http.ResponseWriter, accessToken string) {
 	http.SetCookie(rw, &http.Cookie{
-		Name:   filter.AccessToken,
+		Name:   consts.AccessToken,
 		Value:  accessToken,
 		MaxAge: 60 * 60 * 24,
 	})

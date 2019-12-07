@@ -4,6 +4,7 @@ import (
 	"context"
 	"focus/cfg"
 	"focus/types"
+	"focus/types/consts"
 	"focus/types/user"
 	"focus/util"
 	"strings"
@@ -18,17 +19,18 @@ type CurrentUserInfo struct {
 func (currentUserInfo CurrentUserInfo) TableName() string {
 	return "user_account"
 }
-func CheckUserExistsByAk(ctx context.Context, ak string) error {
+func CheckUserExistsByAk(ctx context.Context) (context.Context, error) {
+	ak := ctx.Value(consts.AccessToken).(string)
 	if ak == "" {
-		return types.NewErr(types.NeedAuthError, "user need auth!")
+		return ctx, types.NewErr(types.NeedAuthError, "user need auth!")
 	}
 	userinfo, err := util.AESUtil.Decrypt(cfg.FocusCtx.Cfg.Server.SecretKey.AesKey, ak)
 	if err != nil {
-		return types.NewErr(types.NeedAuthError, "user need auth!")
+		return ctx, types.NewErr(types.NeedAuthError, "user need auth!")
 	}
 	username := strings.Split(userinfo, ":")[1]
 	if _, ok := cfg.FocusCtx.CurrentUser.Load(username); ok {
-		return nil
+		return ctx, nil
 	}
 	var user CurrentUserInfo
 	cfg.FocusCtx.DB.Where(map[string]interface{}{
@@ -36,10 +38,10 @@ func CheckUserExistsByAk(ctx context.Context, ak string) error {
 		"status": true,
 	}).Find(&user)
 	if user.ID == 0 {
-		return types.NewErr(types.NeedAuthError, "user need auth!")
+		return ctx, types.NewErr(types.NeedAuthError, "user need auth!")
 	}
 	cfg.FocusCtx.CurrentUser.Store(username, user)
-	return nil
+	return ctx, nil
 }
 
 func CheckUserExistsBypwd(ctx context.Context) (*CurrentUserInfo, error) {

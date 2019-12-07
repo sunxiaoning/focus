@@ -9,7 +9,7 @@ import (
 )
 
 var filters = []*types.Filter{
-	User,
+	UserIdentityAuthor, VisiterLimiter,
 }
 
 var (
@@ -32,7 +32,7 @@ func Process(ctx context.Context, rw http.ResponseWriter, req *http.Request) err
 		if !process {
 			continue
 		}
-		if err = filter.Process(ctx, rw, req); err != nil {
+		if ctx, err = filter.Process(ctx, rw, req); err != nil {
 			return err
 		}
 	}

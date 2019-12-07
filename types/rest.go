@@ -12,6 +12,7 @@ type restResponse struct {
 }
 
 func NewRestRestResponse(rw http.ResponseWriter, data interface{}) error {
+	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(rw)
 	encoder.SetEscapeHTML(false)

@@ -19,6 +19,7 @@ const (
 	RepeatRequest     = 9997
 	NeedAuthError     = 9996
 	UserNotFound      = 5001
+	ExceedRateLimit   = 5002
 )
 
 func NewErr(code int, msg string) error {

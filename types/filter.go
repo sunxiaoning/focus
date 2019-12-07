@@ -1,5 +1,12 @@
 package types
 
+import (
+	"context"
+	"net/http"
+)
+
+type Process func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error)
+
 type Filter struct {
 
 	// 顺序
@@ -12,7 +19,7 @@ type Filter struct {
 	ExculdePaths []string
 
 	// 处理器
-	Process Handle
+	Process Process
 }
 
 type FilterComparable []*Filter
