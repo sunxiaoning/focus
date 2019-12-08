@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	resourcetype "focus/types/resource"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/robfig/cron"
@@ -43,6 +44,9 @@ type ctx struct {
 	// 定时任务
 	Task *cron.Cron
 
+	// 服务资源信息
+	ServiceResource []*resourcetype.Resource
+
 	// 用户信息缓存
 	CurrentUser *sync.Map
 
@@ -55,7 +59,7 @@ var UserMap = &sync.Map{}
 var VisitorLimiter = &sync.Map{}
 
 // 应用上下文
-var FocusCtx = &ctx{Cfg, nil, nil, nil, nil, UserMap, VisitorLimiter}
+var FocusCtx = &ctx{Cfg, nil, nil, nil, nil, nil, UserMap, VisitorLimiter}
 
 // 默认配置
 type DefaultCfgVal interface{}

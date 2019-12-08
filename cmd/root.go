@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"focus/app"
 	"focus/cfg"
+	resourceservice "focus/service/resource"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -50,15 +51,19 @@ to quickly create a Cobra application.`,
 }
 
 func RunServer() error {
-	fmt.Println("runtime Env: ", runtimeConfig.Env)
-	if err := app.InitCfg(runtimeConfig); err != nil {
+	fmt.Printf("runtime Env: %s", runtimeConfig.Env)
+	var err error
+	if err = app.InitCfg(runtimeConfig); err != nil {
 		return err
 	}
 	app.InitLog()
-	if err := app.InitDB(); err != nil {
+	if err = app.InitDB(); err != nil {
 		return err
 	}
 	defer cfg.FocusCtx.DB.Close()
+	if err = resourceservice.InitServiceResource(); err != nil {
+		return err
+	}
 	app.InitServer()
 	go app.InitTask()
 	app.StartServer()

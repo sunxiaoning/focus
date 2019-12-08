@@ -3,7 +3,6 @@ package filter
 import (
 	"context"
 	"focus/cfg"
-	"focus/service/resource"
 	"focus/types"
 	"focus/types/consts"
 	"golang.org/x/time/rate"
@@ -15,7 +14,8 @@ var VisiterLimiter = &types.Filter{
 	Paths: []string{
 		"*",
 	},
-	Process: visitLimit,
+	ExculdePaths: pubPaths,
+	Process:      visitLimit,
 }
 
 func visitLimit(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error) {
@@ -29,6 +29,5 @@ func visitLimit(ctx context.Context, rw http.ResponseWriter, req *http.Request) 
 	if !visitLimiter.Allow() {
 		return ctx, types.NewErr(types.ExceedRateLimit, "exceed rate!")
 	}
-	resourceservice.QueryServiceResource(ctx)
 	return ctx, nil
 }
