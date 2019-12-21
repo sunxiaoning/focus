@@ -1,11 +1,11 @@
-package controller
+package contrl
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	servicecontroller "focus/controller/service"
-	"focus/controller/user"
+	servcontrl "focus/contrl/serv"
+	"focus/contrl/user"
 	"focus/filter"
 	"focus/types"
 	"github.com/gorilla/mux"
@@ -15,9 +15,9 @@ import (
 )
 
 var controllers = []*types.Controller{
-	Hi, Hello, Err, usercontroller.Login, servicecontroller.QueryLatest,
-	servicecontroller.GetById, servicecontroller.QueryPrice,
-	servicecontroller.CalculatePrice, servicecontroller.CreateOrder,
+	Hi, Hello, Err, usercontrl.Login, servcontrl.QueryLatest,
+	servcontrl.GetById, servcontrl.QueryPrice,
+	servcontrl.CalculatePrice, servcontrl.CreateOrder,
 }
 
 func InitRouter() *mux.Router {

@@ -2,7 +2,7 @@ package app
 
 import (
 	"focus/cfg"
-	"focus/controller"
+	"focus/contrl"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"net"
@@ -15,7 +15,7 @@ type Server struct {
 }
 
 func InitServer() {
-	router := controller.InitRouter()
+	router := contrl.InitRouter()
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort("127.0.0.1", strconv.Itoa(cfg.FocusCtx.Cfg.Server.ListenPort)),
 		Handler: router,

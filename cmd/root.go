@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"focus/app"
 	"focus/cfg"
-	resourceservice "focus/service/resource"
+	resourceservice "focus/serv/resource"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"

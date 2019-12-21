@@ -1,9 +1,9 @@
-package usercontroller
+package usercontrl
 
 import (
 	"context"
 	"focus/cfg"
-	"focus/service/user"
+	userserv "focus/serv/user"
 	"focus/types"
 	userconsts "focus/types/consts/user"
 	"focus/types/user"
@@ -26,7 +26,7 @@ func login(ctx context.Context, rw http.ResponseWriter, req *http.Request) error
 		return types.NewErr(types.InvalidParamError, "passwd can't be empty!")
 	}
 	ctx = context.WithValue(ctx, "userlogin", &usertype.UserLoginReq{username, passwd})
-	user, err := userservice.CheckUserExistsBypwd(ctx)
+	user, err := userserv.CheckUserExistsBypwd(ctx)
 	if err != nil {
 		return err
 	}

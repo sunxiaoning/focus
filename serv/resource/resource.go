@@ -1,4 +1,4 @@
-package resourceservice
+package resourceserv
 
 import (
 	"focus/cfg"
