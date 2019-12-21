@@ -4,7 +4,7 @@ import (
 	"context"
 	"focus/cfg"
 	"focus/types"
-	"focus/types/consts"
+	userconsts "focus/types/consts/user"
 	"focus/types/user"
 	"focus/util"
 	"strings"
@@ -20,7 +20,7 @@ func (currentUserInfo CurrentUserInfo) TableName() string {
 	return "user_account"
 }
 func CheckUserExistsByAk(ctx context.Context) (context.Context, error) {
-	ak := ctx.Value(consts.AccessToken).(string)
+	ak := ctx.Value(userconsts.AccessToken).(string)
 	if ak == "" {
 		return ctx, types.NewErr(types.NeedAuthError, "user need auth!")
 	}
@@ -33,10 +33,7 @@ func CheckUserExistsByAk(ctx context.Context) (context.Context, error) {
 		return ctx, nil
 	}
 	var user CurrentUserInfo
-	cfg.FocusCtx.DB.Where(map[string]interface{}{
-		"id":     strings.Split(userinfo, ":")[0],
-		"status": true,
-	}).Find(&user)
+	cfg.FocusCtx.DB.Where("member_id = ? and status = 1", strings.Split(userinfo, ":")[0]).Find(&user)
 	if user.ID == 0 {
 		return ctx, types.NewErr(types.NeedAuthError, "user need auth!")
 	}
@@ -55,12 +52,9 @@ func CheckUserExistsBypwd(ctx context.Context) (*CurrentUserInfo, error) {
 		return user.(*CurrentUserInfo), nil
 	}
 	var user CurrentUserInfo
-	cfg.FocusCtx.DB.Where(map[string]interface{}{
-		"user_name": userlogin.Username,
-		"passwd":    userlogin.Passwd,
-	}).Find(&user)
+	cfg.FocusCtx.DB.Where("user_name = ? and passwd = ? and status = 1", userlogin.Username, userlogin.Passwd).First(&user)
 	if user.ID == 0 {
-		return nil, types.NewErr(types.UserNotFound, "user not exists!")
+		return nil, types.NewErr(types.NotFound, "user not exists!")
 	}
 	cfg.FocusCtx.CurrentUser.Store(user.UserName, &user)
 	return &user, nil

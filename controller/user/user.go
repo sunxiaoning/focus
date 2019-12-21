@@ -5,7 +5,7 @@ import (
 	"focus/cfg"
 	"focus/service/user"
 	"focus/types"
-	"focus/types/consts"
+	userconsts "focus/types/consts/user"
 	"focus/types/user"
 	"focus/util"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-var Login = types.NewController("/login", http.MethodGet, login)
+var Login = types.NewController(types.ApiV1+"/user/login", http.MethodGet, login)
 
 func login(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
 	params := req.URL.Query()
@@ -43,7 +43,7 @@ func login(ctx context.Context, rw http.ResponseWriter, req *http.Request) error
 
 func writeUserCookie(rw http.ResponseWriter, accessToken string) {
 	http.SetCookie(rw, &http.Cookie{
-		Name:   consts.AccessToken,
+		Name:   userconsts.AccessToken,
 		Value:  accessToken,
 		MaxAge: 60 * 60 * 24,
 	})

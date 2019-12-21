@@ -4,7 +4,7 @@ import (
 	"context"
 	"focus/cfg"
 	"focus/types"
-	"focus/types/consts"
+	userconsts "focus/types/consts/user"
 	"golang.org/x/time/rate"
 	"net/http"
 )
@@ -19,7 +19,7 @@ var VisiterLimiter = &types.Filter{
 }
 
 func visitLimit(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error) {
-	ak := ctx.Value(consts.AccessToken).(string)
+	ak := ctx.Value(userconsts.AccessToken).(string)
 	limiter, ok := cfg.FocusCtx.VisitorLimiter.Load(ak)
 	if !ok {
 		limiter = rate.NewLimiter(1, 1)
