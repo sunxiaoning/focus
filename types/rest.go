@@ -11,6 +11,23 @@ type restResponse struct {
 	Data            interface{} `json:"data,omitempty"`
 }
 
+type PageRequest struct {
+	PageIndex int `json:"pageIndex"`
+	PageSize  int `json:"pageSize"`
+}
+
+type PageResponse struct {
+	Total      int         `json:"total"`
+	ResultList interface{} `json:"resultList"`
+}
+
+func NewPageResponse(total int, resultList interface{}) *PageResponse {
+	return &PageResponse{
+		Total:      total,
+		ResultList: resultList,
+	}
+}
+
 func NewRestRestResponse(rw http.ResponseWriter, data interface{}) error {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
