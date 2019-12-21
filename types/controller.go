@@ -13,6 +13,10 @@ type Controller struct {
 	Handle Handle
 }
 
+const (
+	ApiV1 = "/api/v1"
+)
+
 func NewController(path string, method string, handle Handle) *Controller {
 	return &Controller{
 		Path:   path,
