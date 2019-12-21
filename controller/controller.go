@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	servicecontroller "focus/controller/service"
 	"focus/controller/user"
 	"focus/filter"
 	"focus/types"
@@ -14,7 +15,9 @@ import (
 )
 
 var controllers = []*types.Controller{
-	Hi, Hello, Err, usercontroller.Login,
+	Hi, Hello, Err, usercontroller.Login, servicecontroller.QueryLatest,
+	servicecontroller.GetById, servicecontroller.QueryPrice,
+	servicecontroller.CalculatePrice, servicecontroller.CreateOrder,
 }
 
 func InitRouter() *mux.Router {
@@ -29,7 +32,12 @@ func handle(controller *types.Controller) http.HandlerFunc {
 	pctx := context.Background()
 	return func(rw http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithCancel(pctx)
-		defer cancel()
+		defer func() {
+			cancel()
+			if r := recover(); r != nil {
+				handleErrResponse(rw, types.SystemErr(fmt.Sprintf("%v", r)))
+			}
+		}()
 
 		// 过滤器执行
 		if err := filter.Process(ctx, rw, req); err != nil {
