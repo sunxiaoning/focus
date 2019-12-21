@@ -1,4 +1,4 @@
-package consts
+package userconsts
 
 const (
 	AccessToken = "accessToken"
