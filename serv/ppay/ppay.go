@@ -8,6 +8,7 @@ import (
 	orderstatusconst "focus/types/consts/orderstatus"
 	ppaytype "focus/types/ppay"
 	"focus/util"
+	dbutil "focus/util/db"
 	strutil "focus/util/strs"
 	timutil "focus/util/tim"
 	"github.com/jinzhu/gorm"
@@ -51,20 +52,21 @@ func CreateOrder(ctx context.Context) (*ppaytype.CreateOrderRes, error) {
 		return nil, types.InvalidParamErr("notifyUrl can't be empty!")
 	}
 	var receiptAccountEntity ppaytype.PReceiptAccountEntity
-	tx.Table("personal_receipt_account").Where("id = ? and status = 1", reqParam.PayeeAccountId).Find(&receiptAccountEntity)
+	dbutil.NewDbExecutor(tx.Table("personal_receipt_account").Where("id = ? and status = 1", reqParam.PayeeAccountId).Find(&receiptAccountEntity))
 	if receiptAccountEntity.ID == 0 {
 		return nil, types.NotFoundErr(fmt.Sprintf("receiptAccount id =%s not exists!", reqParam.PayeeAccountId))
 	}
 	var receiptCodeEntity ppaytype.PReceiptCodeEntity
-	tx.Table("personal_receipt_code").Where("payee_channel = ? and payee_amount = ? and payee_account_id = ? and status = 1", reqParam.PayChannel, reqParam.PayAmount, reqParam.PayeeAccountId).Find(&receiptCodeEntity)
+	dbutil.NewDbExecutor(tx.Table("personal_receipt_code").Where("payee_channel = ? and payee_amount = ? and payee_account_id = ? and status = 1", reqParam.PayChannel, reqParam.PayAmount, reqParam.PayeeAccountId).Find(&receiptCodeEntity))
 	if receiptCodeEntity.ID == 0 {
-		tx.Table("personal_receipt_code").Where("payee_channel = ? and payee_amount = 9999.99 and payee_account_id = ? and status = 1", reqParam.PayChannel, reqParam.PayeeAccountId).Find(receiptCodeEntity)
+		dbutil.NewDbExecutor(tx.Table("personal_receipt_code").Where(`payee_channel = ? and payee_amount = 9999.99
+		and payee_account_id = ? and status = 1`, reqParam.PayChannel, reqParam.PayeeAccountId).Find(&receiptCodeEntity))
 	}
 	if receiptCodeEntity.ID == 0 {
 		return nil, types.NotFoundErr("not find PayeeAccount qrcode!")
 	}
 	var payOrder ppaytype.PPayOrderEntity
-	tx.Table("personal_pay_order").Where("out_trade_no = ? and status = 1", reqParam.OutTradeNo).Find(&payOrder)
+	dbutil.NewDbExecutor(tx.Table("personal_pay_order").Where("out_trade_no = ? and status = 1", reqParam.OutTradeNo).Find(&payOrder))
 	if payOrder.ID != 0 {
 		return nil, types.RepeatRequestErr("payOrder already exists!")
 	}
@@ -85,10 +87,7 @@ func CreateOrder(ctx context.Context) (*ppaytype.CreateOrderRes, error) {
 		StartTime:     time.Now(),
 		FinishTime:    timutil.ZERO,
 	}
-	err = tx.Table("personal_pay_order").Create(&payOrder).Error
-	if err != nil {
-		return nil, types.DbErr(err)
-	}
+	dbutil.NewDbExecutor(tx.Table("personal_pay_order").Create(&payOrder))
 	res := &ppaytype.CreateOrderRes{PayOrderNo: payOrder.PayOrderNo}
 	return res, nil
 }

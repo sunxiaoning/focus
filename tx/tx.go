@@ -21,6 +21,7 @@ func (txManager *txManager) RunTx(ctx context.Context, tFun TFun) (res TFunRes, 
 	defer func() {
 		if r := recover(); r != nil {
 			txManager.tx.Rollback()
+			panic(r)
 		}
 	}()
 	ctx = context.WithValue(ctx, "tx", txManager.tx)

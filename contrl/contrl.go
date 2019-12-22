@@ -35,7 +35,12 @@ func handle(controller *types.Controller) http.HandlerFunc {
 		defer func() {
 			cancel()
 			if r := recover(); r != nil {
-				handleErrResponse(rw, types.SystemErr(fmt.Sprintf("%v", r)))
+				err, ok := r.(*types.FocusError)
+				if ok {
+					handleErrResponse(rw, err)
+				} else {
+					handleErrResponse(rw, types.SystemErr(fmt.Sprintf("%v", r)))
+				}
 			}
 		}()
 

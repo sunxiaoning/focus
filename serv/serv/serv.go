@@ -10,7 +10,7 @@ import (
 	"focus/types/consts/orderstatus"
 	ppaytype "focus/types/ppay"
 	servicetype "focus/types/service"
-	"focus/util/page"
+	dbutil "focus/util/db"
 	timutil "focus/util/tim"
 	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
@@ -38,8 +38,7 @@ func QueryLatest(ctx context.Context) (*types.PageResponse, error) {
 	}
 	var services []*servicetype.ServiceEntity
 	var total int
-	dbQuery := cfg.FocusCtx.DB.Table("service").Where(query).Where("service_status = 'FWZ' and status = 1")
-	pageutil.PageQuery(dbQuery, reqParam.PageIndex, reqParam.PageSize, &total, &services)
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service").Where(query).Where("service_status = 'FWZ' and status = 1")).PageQuery(reqParam.PageIndex, reqParam.PageSize, &total, &services)
 	var results []*servicetype.QueryLatestRes
 	for _, service := range services {
 		result := &servicetype.QueryLatestRes{ServiceId: service.ID, ServiceType: service.ServiceType, ChineseName: service.ChineseName, ServiceDesc: service.ServiceDesc, PublishTime: timutil.DefFormat(service.PublishTime)}
@@ -54,7 +53,7 @@ func GetServiceById(ctx context.Context) (*servicetype.GetByIdRes, error) {
 		return nil, types.NewErr(types.InvalidParamError, "serviceId is invalided!")
 	}
 	service := &servicetype.ServiceEntity{}
-	cfg.FocusCtx.DB.Table("service").Where("id = ? and status = 1", serviceId).First(service)
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service").Where("id = ? and status = 1", serviceId).Find(service))
 	if service.ID == 0 {
 		return nil, types.NewErr(types.NotFound, "service not exists!")
 	}
@@ -74,7 +73,7 @@ func QueryPrice(ctx context.Context) ([]*servicetype.QueryPriceRes, error) {
 		return nil, types.NewErr(types.NotFound, "service not found!")
 	}
 	var prices []*servicetype.PriceEntity
-	cfg.FocusCtx.DB.Table("service_price").Where("service_id = ? and status = 1", serviceId).Find(&prices)
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service_price").Where("service_id = ? and status = 1", serviceId).Find(&prices))
 	var results []*servicetype.QueryPriceRes
 	for _, price := range prices {
 		result := &servicetype.QueryPriceRes{ID: price.ID, PriceName: price.Price, ServiceId: price.ServiceId, Price: price.Price, ServiceAmount: price.ServiceAmount}
@@ -92,7 +91,7 @@ func CalculatePrice(ctx context.Context) (*servicetype.CalculatePriceRes, error)
 		return nil, types.NewErr(types.InvalidParamError, "amount param is invalid!")
 	}
 	var priceEntity servicetype.PriceEntity
-	cfg.FocusCtx.DB.Table("service_price").Where("id = ? and status = 1", reqParam.PriceId).First(&priceEntity)
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service_price").Where("id = ? and status = 1", reqParam.PriceId).First(&priceEntity))
 	if priceEntity.ID == 0 {
 		return nil, types.NewErr(types.NotFound, "price not exists!")
 	}
@@ -127,12 +126,12 @@ func CreateOrderTx(ctx context.Context) (tx.TFunRes, error) {
 		return nil, types.NewErr(types.PayChannelNotSupport, "payChannel not support!")
 	}
 	var orderEntity servicetype.OrderEntity
-	tx.Table("service_order").Where("order_no = ? and status = 1", reqParam.OrderNo).First(&orderEntity)
+	dbutil.NewDbExecutor(tx.Table("service_order").Where("order_no = ? and status = 1", reqParam.OrderNo).Find(&orderEntity))
 	if orderEntity.ID != 0 {
 		return nil, types.RepeatRequestErr(fmt.Sprintf("order orderNo=%s already exists!", reqParam.OrderNo))
 	}
 	var priceEntity servicetype.PriceEntity
-	tx.Table("service_price").Where("id = ? and status = 1", reqParam.ServicePriceId).First(&priceEntity)
+	dbutil.NewDbExecutor(tx.Table("service_price").Where("id = ? and status = 1", reqParam.ServicePriceId).Find(&priceEntity))
 	if priceEntity.ID == 0 {
 		return nil, types.NotFoundErr(fmt.Sprintf("price priceId=%d not exists!", reqParam.ServicePriceId))
 	}
@@ -144,7 +143,6 @@ func CreateOrderTx(ctx context.Context) (tx.TFunRes, error) {
 	orderEntity.FinishedTime = timutil.ZERO
 	orderEntity.OrderStatus = orderstatusconst.I
 	price, err := decimal.NewFromString(priceEntity.Price)
-	price.StringFixedBank(2)
 	if err != nil {
 		types.NewErr(types.DataDirty, fmt.Sprintf("invalid price=%s", priceEntity.Price))
 	}
@@ -153,10 +151,7 @@ func CreateOrderTx(ctx context.Context) (tx.TFunRes, error) {
 	orderEntity.PayAmount = price.StringFixedBank(2)
 	orderEntity.CouponNo = reqParam.CouponNo
 	orderEntity.PayChannel = reqParam.PayChannel
-	err = tx.Table("service_order").Create(&orderEntity).Error
-	if err != nil {
-		return nil, types.DbErr(err)
-	}
+	dbutil.NewDbExecutor(tx.Table("service_order").Create(&orderEntity))
 	createPayOrderReq := &ppaytype.CreateOrderReq{
 		OutTradeNo:     orderEntity.OrderNo,
 		OrderAmount:    orderEntity.OrderAmount,
@@ -171,6 +166,7 @@ func CreateOrderTx(ctx context.Context) (tx.TFunRes, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbutil.NewDbExecutor(tx.Table("service_order").Where("id = ? and status = 1", orderEntity.ID).Update("out_order_no", createPayOrderRes.PayOrderNo))
 	cashierParams := &servicetype.CashierReq{
 		OrderNo:     orderEntity.OrderNo,
 		OutOrderNo:  createPayOrderRes.PayOrderNo,
@@ -184,4 +180,14 @@ func CreateOrderTx(ctx context.Context) (tx.TFunRes, error) {
 		CashierParams: cashierParams,
 	}
 	return res, nil
+}
+
+func SubmitOrderTx(ctx context.Context) (tx.TFunRes, error) {
+	/*tx := ctx.Value("tx").(*gorm.DB)
+	reqParam := ctx.Value("reqParam").(*servicetype.CashierReq)
+	if strutil.IsBlank(reqParam.OrderNo) {
+		types.InvalidParamErr("orderNo can't be empty!")
+	}*/
+	return nil, nil
+
 }

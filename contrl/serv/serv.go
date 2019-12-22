@@ -106,5 +106,14 @@ func createOrder(ctx context.Context, rw http.ResponseWriter, req *http.Request)
 var Cashier = types.NewController(url("/cashier"), http.MethodPost, cashier)
 
 func cashier(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
-	return nil
+	var reqParam = &servicetype.CashierReq{}
+	if err := json.NewDecoder(req.Body).Decode(reqParam); err != nil {
+		types.InvalidParamErr("invalid json format!")
+	}
+	ctx = context.WithValue(ctx, "reqParam", reqParam)
+	data, err := tx.NewTxManager().RunTx(ctx, servserv.SubmitOrderTx)
+	if err != nil {
+		return err
+	}
+	return types.NewRestRestResponse(rw, data)
 }
