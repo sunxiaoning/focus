@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"focus/util/file"
 	"github.com/valyala/fasthttp"
 	"io"
 	"net/http"
@@ -105,8 +106,7 @@ func (c *defaultHttpClient) DownloadFileWithHeader(url string, destPath string, 
 	if code != http.StatusOK || len(content) <= 0 || err != nil {
 		return httpReqError{err, fmt.Sprintf("req source error! code:%d, content-len:%s", code, content)}
 	}
-	fileHelper := DefaultFileHelper
-	downloadFile, err := fileHelper.OpenFile(destPath, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0755)
+	downloadFile, err := fileutil.OpenFile(destPath, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0755)
 	if err != nil {
 		return err
 	}
