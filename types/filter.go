@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type Process func(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error)
+type Process func(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context
 
 type Filter struct {
 

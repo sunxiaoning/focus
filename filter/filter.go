@@ -19,44 +19,36 @@ var (
 	}
 )
 
-func Process(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+func Process(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context {
 	sort.Sort(types.FilterComparable(filters))
 
 	// 过滤器执行
-	var err error
-	var process bool
 	for _, filter := range filters {
-		if process, err = isMatched(filter, req); err != nil {
-			return err
-		}
-		if !process {
-			continue
-		}
-		if ctx, err = filter.Process(ctx, rw, req); err != nil {
-			return err
+		if isMatched(filter, req) {
+			ctx = filter.Process(ctx, rw, req)
 		}
 	}
-	return nil
+	return ctx
 }
 
-func isMatched(filter *types.Filter, req *http.Request) (isMatched bool, err error) {
+func isMatched(filter *types.Filter, req *http.Request) (isMatched bool) {
 	if filter.Paths == nil || len(filter.Paths) <= 0 {
-		return false, err
+		return false
 	}
 	if filter.ExculdePaths != nil && len(filter.ExculdePaths) >= 1 {
 		for _, excludePath := range filter.ExculdePaths {
 			if strings.Contains(req.URL.Path, excludePath) {
-				return false, nil
+				return false
 			}
 		}
 	}
 	if filter.Paths[0] == "*" {
-		return true, nil
+		return true
 	}
 	for _, path := range filter.Paths {
 		if strings.Contains(req.URL.Path, path) {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }

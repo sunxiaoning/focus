@@ -28,11 +28,11 @@ func NewPageResponse(total int, resultList interface{}) *PageResponse {
 	}
 }
 
-func NewRestRestResponse(rw http.ResponseWriter, data interface{}) error {
+func NewRestRestResponse(rw http.ResponseWriter, data interface{}) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(rw)
 	encoder.SetEscapeHTML(false)
 	res := &restResponse{Success, "", data}
-	return encoder.Encode(res)
+	panic(encoder.Encode(res))
 }
