@@ -1,4 +1,4 @@
-package util
+package aesutil
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 type aesEncrypter struct {
 }
 
-var AESUtil = &aesEncrypter{}
+var DefaultEncrypter = &aesEncrypter{}
 
 func (aesEncrypter *aesEncrypter) Encrypt(key string, origin string) (encrypt string, err error) {
 	k := []byte(key)
@@ -54,6 +54,18 @@ func (aesEncrypter *aesEncrypter) GenerateKey(n int) (key string, err error) {
 		break
 	}
 	return randutil.AlphaString(n)
+}
+
+func Encrypt(key string, origin string) (encrypt string, err error) {
+	return DefaultEncrypter.Encrypt(key, origin)
+}
+
+func Decrypt(key string, encrypt string) (origin string, err error) {
+	return DefaultEncrypter.Decrypt(key, encrypt)
+}
+
+func GenerateKey(n int) (key string, err error) {
+	return DefaultEncrypter.GenerateKey(n)
 }
 
 func pKCS7Padding(ciphertext []byte, blocksize int) []byte {
