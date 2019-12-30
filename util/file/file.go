@@ -1,4 +1,4 @@
-package util
+package fileutil
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 type fileHelper struct {
 }
 
-var DefaultFileHelper = &fileHelper{}
+var FileHelper = &fileHelper{}
 
-type FileOperation interface {
+type fileOperation interface {
 	CreateDirectory(dirPath string) (err error)
 	OpenFile(filePath string, flag int, perm os.FileMode) (file *os.File, err error)
 	PathExist(filePath string) (exists bool)
@@ -38,7 +38,25 @@ func (fileHelper *fileHelper) OpenFile(filePath string, flag int, perm os.FileMo
 	return os.OpenFile(filePath, flag, perm)
 }
 
+func (fileHelper *fileHelper) DefOpenFile(filePath string) (file *os.File, err error) {
+	return fileHelper.OpenFile(filePath, os.O_RDONLY, 0)
+}
+
 func (fileHelper *fileHelper) PathExist(filePath string) (exists bool) {
 	_, err := os.Stat(filePath)
 	return err == nil
+}
+
+func CreateDirectory(dirPath string) (err error) {
+	return FileHelper.CreateDirectory(dirPath)
+}
+func OpenFile(filePath string, flag int, perm os.FileMode) (file *os.File, err error) {
+	return FileHelper.OpenFile(filePath, flag, perm)
+}
+
+func DefOpenFile(filePath string) (file *os.File, err error) {
+	return FileHelper.DefOpenFile(filePath)
+}
+func PathExist(filePath string) (exists bool) {
+	return FileHelper.PathExist(filePath)
 }
