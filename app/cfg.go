@@ -2,7 +2,8 @@ package app
 
 import (
 	"focus/cfg"
-	"focus/util"
+	"focus/util/file"
+	"focus/util/rsa"
 	"io/ioutil"
 	"path"
 	"path/filepath"
@@ -20,12 +21,12 @@ func InitCfg(runtimeConfig *cfg.RuntimeConfig) error {
 		serverConfig.SecretKey.FilePath = runtimeConfig.SecretKeyPath
 	}
 	rsaPriKeyFile := path.Join(serverConfig.SecretKey.FilePath, cfg.PriKeyFileName)
-	serverConfig.SecretKey.RsAKey.PriKey, err = util.DefaultEncryptor.ParseKeyFromFile(rsaPriKeyFile)
+	serverConfig.SecretKey.RsAKey.PriKey, err = rsautil.ParseKeyFromFile(rsaPriKeyFile)
 	if err != nil {
 		return err
 	}
 	rsaPubKeyFile := path.Join(serverConfig.SecretKey.FilePath, cfg.PubKeyFileName)
-	serverConfig.SecretKey.RsAKey.PubKey, err = util.DefaultEncryptor.ParseKeyFromFile(rsaPubKeyFile)
+	serverConfig.SecretKey.RsAKey.PubKey, err = rsautil.ParseKeyFromFile(rsaPubKeyFile)
 	if err != nil {
 		return err
 	}
@@ -34,18 +35,21 @@ func InitCfg(runtimeConfig *cfg.RuntimeConfig) error {
 	if err != nil {
 		return err
 	}
-	aesKey, err := util.DefaultEncryptor.Decrypt(serverConfig.SecretKey.RsAKey.PriKey, string(aesKeyBytes))
+	aesKey, err := rsautil.Decrypt(serverConfig.SecretKey.RsAKey.PriKey, string(aesKeyBytes))
 	if err != nil {
 		return err
 	}
 	serverConfig.SecretKey.AesKey = aesKey
+	if err := fileutil.CreateDirectory(serverConfig.RootFilePath); err != nil {
+		return err
+	}
 	cfg.Cfg.Server = serverConfig
 	defaultDatabase, err := cfg.DefaultDatabase.GetDefaultCfg(runtimeConfig.Env)
 	if err != nil {
 		return err
 	}
 	cfg.Cfg.Database = defaultDatabase.(*cfg.DatabaseConfig)
-	if err := util.DefaultFileHelper.CreateDirectory(filepath.Dir(defaultServer.(*cfg.ServerCfg).LogFilePath)); err != nil {
+	if err := fileutil.CreateDirectory(filepath.Dir(defaultServer.(*cfg.ServerCfg).LogFilePath)); err != nil {
 		return err
 	}
 	return nil
