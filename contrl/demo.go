@@ -8,21 +8,19 @@ import (
 
 var Hi = types.NewController("/hi", http.MethodGet, hi)
 
-func hi(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+func hi(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("hi,world!"))
-	return nil
 }
 
 var Hello = types.NewController("/hello", http.MethodGet, hello)
 
-func hello(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+func hello(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("hello,world!"))
-	return nil
 }
 
 var Err = types.NewController("/err", http.MethodGet, err)
 
-func err(ctx context.Context, rw http.ResponseWriter, req *http.Request) error {
+func err(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	// return errors.New("divide")
-	return types.NewErr(types.SystemError, "未知异常！")
+	types.NewErr(types.SystemError, "未知异常！")
 }
