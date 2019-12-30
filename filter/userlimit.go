@@ -12,13 +12,12 @@ import (
 var VisiterLimiter = &types.Filter{
 	Order: 1,
 	Paths: []string{
-		"*",
+		types.ApiV1 + "/gtw",
 	},
-	ExculdePaths: pubPaths,
-	Process:      visitLimit,
+	Process: visitLimit,
 }
 
-func visitLimit(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error) {
+func visitLimit(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context {
 	ak := ctx.Value(userconsts.AccessToken).(string)
 	limiter, ok := cfg.FocusCtx.VisitorLimiter.Load(ak)
 	if !ok {
@@ -27,7 +26,7 @@ func visitLimit(ctx context.Context, rw http.ResponseWriter, req *http.Request) 
 	}
 	visitLimiter := limiter.(*rate.Limiter)
 	if !visitLimiter.Allow() {
-		return ctx, types.NewErr(types.ExceedRateLimit, "exceed rate!")
+		types.ErrPanic(types.ExceedRateLimit, "exceed rate!")
 	}
-	return ctx, nil
+	return ctx
 }

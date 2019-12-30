@@ -8,3 +8,8 @@ type UserLoginReq struct {
 type UserLoginRes struct {
 	UserId int64 `json:"userId"`
 }
+
+type MemberEntity struct {
+	ID       int
+	NickName string
+}

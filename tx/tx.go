@@ -15,9 +15,9 @@ func NewTxManager() *txManager {
 }
 
 type TFunRes interface{}
-type TFun func(ctx context.Context) (res TFunRes, err error)
+type TFun func(ctx context.Context) (res TFunRes)
 
-func (txManager *txManager) RunTx(ctx context.Context, tFun TFun) (res TFunRes, err error) {
+func (txManager *txManager) RunTx(ctx context.Context, tFun TFun) (res TFunRes) {
 	defer func() {
 		if r := recover(); r != nil {
 			txManager.tx.Rollback()
@@ -25,11 +25,7 @@ func (txManager *txManager) RunTx(ctx context.Context, tFun TFun) (res TFunRes, 
 		}
 	}()
 	ctx = context.WithValue(ctx, "tx", txManager.tx)
-	res, err = tFun(ctx)
-	if err != nil {
-		txManager.tx.Rollback()
-	} else {
-		txManager.tx.Commit()
-	}
-	return res, err
+	res = tFun(ctx)
+	txManager.tx.Commit()
+	return res
 }

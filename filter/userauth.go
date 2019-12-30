@@ -17,7 +17,7 @@ var UserIdentityAuthor = &types.Filter{
 	Process:      userIdentityAuth,
 }
 
-func userIdentityAuth(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error) {
+func userIdentityAuth(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context {
 	accessTokenCookie, err := req.Cookie(userconsts.AccessToken)
 	if err != nil || accessTokenCookie == nil {
 		return checkAccessKey(ctx, rw, req)
@@ -26,7 +26,7 @@ func userIdentityAuth(ctx context.Context, rw http.ResponseWriter, req *http.Req
 	return userserv.CheckUserExistsByAk(ctx)
 }
 
-func checkAccessKey(ctx context.Context, rw http.ResponseWriter, req *http.Request) (context.Context, error) {
+func checkAccessKey(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context {
 	ctx = context.WithValue(ctx, userconsts.AccessToken, req.Header.Get(userconsts.AccessToken))
 	return userserv.CheckUserExistsByAk(ctx)
 }
