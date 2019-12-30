@@ -1,4 +1,4 @@
-package util
+package rsautil
 
 import (
 	"bytes"
@@ -89,6 +89,13 @@ func (rsaEncryptor *rsaEncryptor) Decrypt(priKey string, encrypt string) (origin
 	return encrypter.Decrypt(priKey, encrypt)
 }
 
+func Encrypt(key string, origin string) (encrypt string, err error) {
+	return DefaultEncryptor.Encrypt(key, origin)
+}
+func Decrypt(key string, encrypt string) (origin string, err error) {
+	return DefaultEncryptor.Decrypt(key, encrypt)
+}
+
 func (rsaEncryptor *rsaEncryptor) Sign(originData string, prvKey string) (string, error) {
 	priKeyBytes, err := base64.StdEncoding.DecodeString(prvKey)
 	if err != nil {
@@ -128,6 +135,13 @@ func (rsaEncryptor *rsaEncryptor) VerifySign(originData string, sign string, pub
 	return true, nil
 }
 
+func Sign(originData string, prvKey string) (string, error) {
+	return DefaultEncryptor.Sign(originData, prvKey)
+}
+func VerifySign(originData string, sign string, pubKey string) (bool, error) {
+	return DefaultEncryptor.VerifySign(originData, sign, pubKey)
+}
+
 func (rsaEncryptor *rsaEncryptor) ParseKeyFromFile(fileName string) (string, error) {
 	priKeyBytes, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -138,6 +152,10 @@ func (rsaEncryptor *rsaEncryptor) ParseKeyFromFile(fileName string) (string, err
 		return "", types.NewErr(types.InvalidParamError, "priKey format error!")
 	}
 	return base64.StdEncoding.EncodeToString(block.Bytes), nil
+}
+
+func ParseKeyFromFile(fileName string) (string, error) {
+	return DefaultEncryptor.ParseKeyFromFile(fileName)
 }
 
 func checkKeyFormat(keyFormat string) error {
