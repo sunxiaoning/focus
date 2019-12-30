@@ -23,37 +23,68 @@ const (
 	ExceedRateLimit      = 5002
 	DataDirty            = 5003
 	PayChannelNotSupport = 5004
+	PayOrderTimeout      = 5005
+	FileSizeTooLarge     = 5006
+	GenUUIDError         = 5007
 )
 
-func InvalidParamErr(msg string) error {
+func InvalidParamErr(msg string) *FocusError {
 	return NewErr(InvalidParamError, msg)
 }
 
-func SystemErr(msg string) error {
+func InvalidParamPanic(msg string) {
+	ErrPanic(InvalidParamError, msg)
+}
+
+func SystemErr(msg string) *FocusError {
 	return NewErr(SystemError, msg)
 }
 
-func RepeatRequestErr(msg string) error {
+func SystemPanic(msg string) {
+	ErrPanic(SystemError, msg)
+}
+
+func RepeatRequestErr(msg string) *FocusError {
 	return NewErr(RepeatRequest, msg)
 }
 
-func NeedAuthErr(msg string) error {
+func RepeatRequestPanic(msg string) {
+	ErrPanic(RepeatRequest, msg)
+}
+
+func NeedAuthErr(msg string) *FocusError {
 	return NewErr(NeedAuthError, msg)
 }
 
-func NotFoundErr(msg string) error {
+func NeedAuthPanic(msg string) {
+	ErrPanic(NeedAuthError, msg)
+}
+
+func NotFoundErr(msg string) *FocusError {
 	return NewErr(NotFound, msg)
 }
 
-func DbErr(err error) error {
+func NotFoundPanic(msg string) {
+	ErrPanic(NotFound, msg)
+}
+
+func DbErr(err error) *FocusError {
 	return NewErr(DbError, err.Error())
 }
 
-func NewErr(code int, msg string) error {
+func DbPanic(err error) {
+	ErrPanic(DbError, err.Error())
+}
+
+func NewErr(code int, msg string) *FocusError {
 	return &FocusError{
 		Code:    code,
 		Message: msg,
 	}
+}
+
+func ErrPanic(code int, msg string) {
+	NewErr(code, msg).Throw()
 }
 
 func (focusError *FocusError) Error() string {
@@ -65,4 +96,8 @@ func (focusError *FocusError) Error() string {
 		return err.Error()
 	}
 	return string(msg)
+}
+
+func (focusError *FocusError) Throw() {
+	panic(focusError)
 }
