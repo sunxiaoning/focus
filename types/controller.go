@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type Handle func(ctx context.Context, rw http.ResponseWriter, req *http.Request) error
+type Handle func(ctx context.Context, rw http.ResponseWriter, req *http.Request)
 
 type Controller struct {
 	Path   string

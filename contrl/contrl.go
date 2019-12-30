@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	gtwctl "focus/contrl/gtw"
 	servcontrl "focus/contrl/serv"
 	"focus/contrl/user"
 	"focus/filter"
@@ -17,7 +18,9 @@ import (
 var controllers = []*types.Controller{
 	Hi, Hello, Err, usercontrl.Login, servcontrl.QueryLatest,
 	servcontrl.GetById, servcontrl.QueryPrice,
-	servcontrl.CalculatePrice, servcontrl.CreateOrder,
+	servcontrl.CalculatePrice, servcontrl.CreateOrder, servcontrl.Cashier,
+	servcontrl.GetReceiptCode, servcontrl.UploadReceiptCode,
+	gtwctl.Gtw,
 }
 
 func InitRouter() *mux.Router {
@@ -44,17 +47,8 @@ func handle(controller *types.Controller) http.HandlerFunc {
 			}
 		}()
 
-		// 过滤器执行
-		if err := filter.Process(ctx, rw, req); err != nil {
-			handleErrResponse(rw, err)
-			return
-		}
-
 		// 执行Controller逻辑
-		if err := controller.Handle(ctx, rw, req); err != nil {
-			handleErrResponse(rw, err)
-		}
-		return
+		controller.Handle(filter.Process(ctx, rw, req), rw, req)
 	}
 
 }
