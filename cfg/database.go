@@ -1,7 +1,7 @@
 package cfg
 
 import (
-	"focus/util"
+	aesutil "focus/util/aes"
 	"time"
 )
 
@@ -37,27 +37,27 @@ var DefaultDatabase = newDefaultCfg(map[string]DefaultCfgVal{
 func decrpytCfg(cfgVal DefaultCfgVal) (DefaultCfgVal, error) {
 	key := FocusCtx.Cfg.Server.SecretKey.AesKey
 	databaseCfg := cfgVal.(*DatabaseConfig)
-	host, err := util.AESUtil.Decrypt(key, databaseCfg.Host)
+	host, err := aesutil.Decrypt(key, databaseCfg.Host)
 	if err != nil {
 		return nil, err
 	}
 	databaseCfg.Host = host
-	port, err := util.AESUtil.Decrypt(key, databaseCfg.Port)
+	port, err := aesutil.Decrypt(key, databaseCfg.Port)
 	if err != nil {
 		return nil, err
 	}
 	databaseCfg.Port = port
-	dbname, err := util.AESUtil.Decrypt(key, databaseCfg.DBName)
+	dbname, err := aesutil.Decrypt(key, databaseCfg.DBName)
 	if err != nil {
 		return nil, err
 	}
 	databaseCfg.DBName = dbname
-	username, err := util.AESUtil.Decrypt(key, databaseCfg.Username)
+	username, err := aesutil.Decrypt(key, databaseCfg.Username)
 	if err != nil {
 		return nil, err
 	}
 	databaseCfg.Username = username
-	dbpasswd, err := util.AESUtil.Decrypt(key, databaseCfg.Password)
+	dbpasswd, err := aesutil.Decrypt(key, databaseCfg.Password)
 	if err != nil {
 		return nil, err
 	}
