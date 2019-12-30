@@ -113,15 +113,10 @@ type CreateOrderRes struct {
 }
 
 type CashierReq struct {
-	OrderNo     string `json:"orderNo"`
-	OutOrderNo  string `json:"outOrderNo"`
-	OrderAmount string `json:"orderAmount"`
-	RealAmount  string `json:"payAmount"`
-	PayChannel  string `json:"payChannel"`
-	PayReason   string `json:"payReason"`
-}
-
-type CashierRes struct {
-	OrderStatus string `json:"orderStatus"`
-	MaxTimeout  string `json:"maxTimeout"`
+	PayOrderNo     string `json:"payOrderNo"`
+	ServiceOrderNo string `json:"serviceOrderNo"`
+	OrderAmount    string `json:"orderAmount"`
+	PayAmount      string `json:"payAmount"`
+	PayChannel     string `json:"payChannel"`
+	PayReason      string `json:"payReason"`
 }
