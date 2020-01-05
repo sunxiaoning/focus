@@ -154,8 +154,20 @@ func (rsaEncryptor *rsaEncryptor) ParseKeyFromFile(fileName string) (string, err
 	return base64.StdEncoding.EncodeToString(block.Bytes), nil
 }
 
+func (rsaEncryptor *rsaEncryptor) ParseKeyFromString(str string) (string, error) {
+	block, rest := pem.Decode([]byte(str))
+	if block == nil && len(rest) == len([]byte(str)) {
+		return "", types.NewErr(types.InvalidParamError, "priKey format error!")
+	}
+	return base64.StdEncoding.EncodeToString(block.Bytes), nil
+}
+
 func ParseKeyFromFile(fileName string) (string, error) {
 	return DefaultEncryptor.ParseKeyFromFile(fileName)
+}
+
+func ParseKeyFromString(str string) (string, error) {
+	return DefaultEncryptor.ParseKeyFromString(str)
 }
 
 func checkKeyFormat(keyFormat string) error {
