@@ -1,4 +1,4 @@
-package util
+package idgenutil
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 
 func TestIdGen(t *testing.T) {
 	for {
-		t.Log(IdGenerator.NextID())
+		t.Log(NextId())
 		break
 	}
 }

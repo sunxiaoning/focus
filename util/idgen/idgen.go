@@ -1,8 +1,8 @@
-package util
+package idgenutil
 
 import "github.com/sony/sonyflake"
 
-var IdGenerator = sonyflake.NewSonyflake(sonyflake.Settings{
+var idGenerator = sonyflake.NewSonyflake(sonyflake.Settings{
 	MachineID: func() (u uint16, err error) {
 		return 1024, nil
 	},
@@ -10,3 +10,7 @@ var IdGenerator = sonyflake.NewSonyflake(sonyflake.Settings{
 		return true
 	},
 })
+
+func NextId() (uint64, error) {
+	return idGenerator.NextID()
+}

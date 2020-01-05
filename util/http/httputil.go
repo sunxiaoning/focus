@@ -1,4 +1,4 @@
-package util
+package httputil
 
 import (
 	"bufio"
@@ -24,7 +24,7 @@ type SimpleHttpClient interface {
 	GetWithHeader(url string, header map[string]string, timeout time.Duration) (code int, res []byte, err error)
 	Get(url string, timeout time.Duration) (code int, res []byte, err error)
 	DownloadFileWithHeader(url string, destPath string, header map[string][]string, timeout time.Duration) (err error)
-	DownLoadFile(url string, destPath string, header map[string]string) (err error, timeout time.Duration)
+	DownLoadFile(url string, destPath string, timeout time.Duration) (err error)
 }
 
 var DefaultHttpClient = &defaultHttpClient{}
@@ -116,6 +116,25 @@ func (c *defaultHttpClient) DownloadFileWithHeader(url string, destPath string, 
 	buf.Flush()
 	return err
 }
-func (c *defaultHttpClient) DownLoadFile(url string, destPath string, header map[string]string, timeout time.Duration) (err error) {
+func (c *defaultHttpClient) DownLoadFile(url string, destPath string, timeout time.Duration) (err error) {
 	return DefaultHttpClient.DownloadFileWithHeader(url, destPath, nil, timeout)
+}
+
+func PostJsonWithHeader(url string, headers map[string]string, reqParam interface{}, timeout time.Duration) (code int, respBody []byte, err error) {
+	return DefaultHttpClient.PostJsonWithHeader(url, headers, reqParam, timeout)
+}
+func PostJson(url string, reqParam interface{}, timeout time.Duration) (code int, respBody []byte, err error) {
+	return DefaultHttpClient.PostJson(url, reqParam, timeout)
+}
+func GetWithHeader(url string, header map[string]string, timeout time.Duration) (code int, res []byte, err error) {
+	return DefaultHttpClient.GetWithHeader(url, header, timeout)
+}
+func Get(url string, timeout time.Duration) (code int, res []byte, err error) {
+	return DefaultHttpClient.Get(url, timeout)
+}
+func DownloadFileWithHeader(url string, destPath string, header map[string][]string, timeout time.Duration) (err error) {
+	return DefaultHttpClient.DownloadFileWithHeader(url, destPath, header, timeout)
+}
+func DownLoadFile(url string, destPath string, timeout time.Duration) (err error) {
+	return DefaultHttpClient.DownLoadFile(url, destPath, timeout)
 }
