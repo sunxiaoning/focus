@@ -26,6 +26,8 @@ const (
 	PayOrderTimeout      = 5005
 	FileSizeTooLarge     = 5006
 	GenUUIDError         = 5007
+	VerifySignError      = 5008
+	InvalidKeyFormat     = 5009
 )
 
 func InvalidParamErr(msg string) *FocusError {

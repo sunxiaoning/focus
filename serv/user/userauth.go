@@ -5,7 +5,7 @@ import (
 	"focus/cfg"
 	"focus/types"
 	userconsts "focus/types/consts/user"
-	"focus/types/user"
+	membertype "focus/types/member"
 	aesutil "focus/util/aes"
 	"strings"
 )
@@ -17,7 +17,7 @@ type CurrentUserInfo struct {
 }
 
 func (currentUserInfo CurrentUserInfo) TableName() string {
-	return "user_account"
+	return "member_login"
 }
 func CheckUserExistsByAk(ctx context.Context) context.Context {
 	ak := ctx.Value(userconsts.AccessToken).(string)
@@ -42,7 +42,7 @@ func CheckUserExistsByAk(ctx context.Context) context.Context {
 }
 
 func CheckUserExistsBypwd(ctx context.Context) *CurrentUserInfo {
-	userlogin, ok := ctx.Value("userlogin").(*usertype.UserLoginReq)
+	userlogin, ok := ctx.Value("userlogin").(*membertype.MemberLoginReq)
 	if !ok {
 		panic(types.NewErr(types.InvalidParamError, "userlogin param error!"))
 	}

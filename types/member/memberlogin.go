@@ -1,11 +1,11 @@
-package usertype
+package membertype
 
-type UserLoginReq struct {
+type MemberLoginReq struct {
 	Username string
 	Passwd   string
 }
 
-type UserLoginRes struct {
+type MemberLoginRes struct {
 	UserId int64 `json:"userId"`
 }
 

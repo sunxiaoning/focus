@@ -8,9 +8,9 @@ import (
 	"focus/tx"
 	"focus/types"
 	"focus/types/consts/orderstatus"
+	usertype "focus/types/member"
 	ppaytype "focus/types/ppay"
 	servicetype "focus/types/service"
-	usertype "focus/types/user"
 	dbutil "focus/util/db"
 	strutil "focus/util/strs"
 	timutil "focus/util/tim"
@@ -55,7 +55,7 @@ func GetServiceById(ctx context.Context) *servicetype.GetByIdRes {
 		types.InvalidParamPanic("serviceId is invalided!")
 	}
 	service := &servicetype.ServiceEntity{}
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service").Where("id = ? and status = 1", serviceId).Find(service))
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service").Where("id = ? and service_status = 'FWZ' and status = 1", serviceId).Find(service))
 	if service.ID == 0 {
 		types.NotFoundPanic("service not exists!")
 	}
@@ -140,7 +140,7 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 		types.NotFoundPanic(fmt.Sprintf("price priceId=%d not exists!", reqParam.ServicePriceId))
 	}
 	var serviceEntity servicetype.ServiceEntity
-	dbutil.NewDbExecutor(tx.Table("service").Where("id = ? and status = 1", priceEntity.ServiceId).Find(&serviceEntity))
+	dbutil.NewDbExecutor(tx.Table("service").Where("id = ? and service_status = 'FWZ' and status = 1", priceEntity.ServiceId).Find(&serviceEntity))
 	if serviceEntity.ID == 0 {
 		types.NotFoundPanic(fmt.Sprintf("service %d not found!", priceEntity.ServiceId))
 	}

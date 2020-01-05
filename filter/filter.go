@@ -9,7 +9,7 @@ import (
 )
 
 var filters = []*types.Filter{
-	UserIdentityAuthor, VisiterLimiter,
+	UserIdentityAuthor, SignCheck, ServiceAuth, VisiterLimiter,
 }
 
 var (

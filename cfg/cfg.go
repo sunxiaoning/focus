@@ -47,19 +47,29 @@ type ctx struct {
 	// 服务资源信息
 	ServiceResource []*resourcetype.Resource
 
+	// 会员服务信息
+	MemberService *sync.Map
+
 	// 用户信息缓存
 	CurrentUser *sync.Map
 
 	// 访问限流器
 	VisitorLimiter *sync.Map
+
+	// 会员密钥信息
+	MemberSecretKey *sync.Map
 }
+
+var MemberService = &sync.Map{}
 
 var UserMap = &sync.Map{}
 
 var VisitorLimiter = &sync.Map{}
 
+var MemberSecretKey = &sync.Map{}
+
 // 应用上下文
-var FocusCtx = &ctx{Cfg, nil, nil, nil, nil, nil, UserMap, VisitorLimiter}
+var FocusCtx = &ctx{Cfg, nil, nil, nil, nil, nil, MemberService, UserMap, VisitorLimiter, MemberSecretKey}
 
 // 默认配置
 type DefaultCfgVal interface{}

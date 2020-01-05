@@ -6,7 +6,7 @@ import (
 	userserv "focus/serv/user"
 	"focus/types"
 	userconsts "focus/types/consts/user"
-	"focus/types/user"
+	"focus/types/member"
 	aesutil "focus/util/aes"
 	"net/http"
 	"strconv"
@@ -25,7 +25,7 @@ func login(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	if passwd == "" {
 		types.InvalidParamPanic("passwd can't be empty!")
 	}
-	ctx = context.WithValue(ctx, "userlogin", &usertype.UserLoginReq{Username: username, Passwd: passwd})
+	ctx = context.WithValue(ctx, "userlogin", &membertype.MemberLoginReq{Username: username, Passwd: passwd})
 	user := userserv.CheckUserExistsBypwd(ctx)
 	accessToken, err := aesutil.Encrypt(cfg.FocusCtx.Cfg.Server.SecretKey.AesKey, strings.Join([]string{
 		strconv.FormatInt(user.ID, 10),
@@ -35,7 +35,7 @@ func login(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 		panic(err)
 	}
 	writeUserCookie(rw, accessToken)
-	types.NewRestRestResponse(rw, &usertype.UserLoginRes{UserId: user.ID})
+	types.NewRestRestResponse(rw, &membertype.MemberLoginRes{UserId: user.ID})
 }
 
 func writeUserCookie(rw http.ResponseWriter, accessToken string) {
