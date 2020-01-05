@@ -8,9 +8,9 @@ import (
 	"focus/types"
 	orderstatusconst "focus/types/consts/orderstatus"
 	ppaytype "focus/types/ppay"
-	"focus/util"
 	dbutil "focus/util/db"
 	fileutil "focus/util/file"
+	"focus/util/idgen"
 	strutil "focus/util/strs"
 	timutil "focus/util/tim"
 	"github.com/jinzhu/gorm"
@@ -90,7 +90,7 @@ func CreateOrder(ctx context.Context) *ppaytype.CreateOrderRes {
 	if payOrder.ID != 0 {
 		types.RepeatRequestPanic("payOrder already exists!")
 	}
-	payOrderNo, err := util.IdGenerator.NextID()
+	payOrderNo, err := idgenutil.NextId()
 	if err != nil {
 		types.SystemPanic("generate payOrderNo failed!")
 	}
@@ -230,7 +230,7 @@ func UploadReceiptCode(ctx context.Context) *ppaytype.UploadReceiptCodeRes {
 	}
 	t := time.Now()
 	savePath := path.Join(strconv.Itoa(t.Year()), strconv.Itoa(int(t.Month())), strconv.Itoa(t.Day()))
-	id, err := util.IdGenerator.NextID()
+	id, err := idgenutil.NextId()
 	if err != nil {
 		types.ErrPanic(types.GenUUIDError, err.Error())
 	}
