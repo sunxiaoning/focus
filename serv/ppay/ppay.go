@@ -301,11 +301,11 @@ func ResultNotify(ctx context.Context) *ppaytype.PayResultNotifyRes {
 		types.NotFoundPanic("payOrder not exists!")
 	}
 	var receiptCodeEntity ppaytype.PReceiptCodeEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("id = ? and status = 1").Find(&receiptCodeEntity))
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("id = ? and status = 1", payOrderEntity.ReceiptCodeId).Find(&receiptCodeEntity))
 	if receiptCodeEntity.ID == 0 || receiptCodeEntity.PayeeAccountId != payNotifyReq.PayeeAccountId {
 		types.NotFoundPanic("payOrder not exists!")
 	}
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("id = ? and pay_status = 'P' and status = 1").Update("pay_status", orderstatusconst.S))
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("id = ? and pay_status = 'P' and status = 1", payOrderEntity.ID).Update("pay_status", orderstatusconst.S))
 	return &ppaytype.PayResultNotifyRes{
 		PayStatus: orderstatusconst.S,
 	}
