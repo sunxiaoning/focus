@@ -8,16 +8,18 @@ import (
 	"strings"
 )
 
-var filters = []*types.Filter{
-	UserIdentityAuthor, SignCheck, ServiceAuth, VisiterLimiter,
-}
-
 var (
 	pubPaths = []string{
 		"/login",
 		"/hello",
 	}
 )
+
+var filters []*types.Filter
+
+func InitFilter(fs []*types.Filter) {
+	filters = fs
+}
 
 func Process(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context {
 	sort.Sort(types.FilterComparable(filters))

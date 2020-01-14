@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	gtwctl "focus/contrl/gtw"
-	servcontrl "focus/contrl/serv"
-	"focus/contrl/user"
 	"focus/filter"
 	"focus/types"
 	"github.com/gorilla/mux"
@@ -15,15 +12,7 @@ import (
 	"reflect"
 )
 
-var controllers = []*types.Controller{
-	Hi, Hello, Err, usercontrl.Login, servcontrl.QueryLatest,
-	servcontrl.GetById, servcontrl.QueryPrice,
-	servcontrl.CalculatePrice, servcontrl.CreateOrder, servcontrl.Cashier,
-	servcontrl.GetReceiptCode, servcontrl.UploadReceiptCode,
-	gtwctl.Gtw,
-}
-
-func InitRouter() *mux.Router {
+func InitRouter(controllers []*types.Controller) *mux.Router {
 	router := mux.NewRouter()
 	for _, controller := range controllers {
 		router.Path(controller.Path).Methods(controller.Method).Handler(handle(controller))

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"focus/app"
 	"focus/cfg"
-	resourceservice "focus/serv/resource"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -61,10 +60,7 @@ func RunServer() error {
 		return err
 	}
 	defer cfg.FocusCtx.DB.Close()
-	if err = resourceservice.InitServiceResource(); err != nil {
-		return err
-	}
-	app.InitServer()
+	app.InitServer(cfg.FocusCtx.Cfg.Server.ListenPort, app.Apis, app.ApiFilters)
 	go app.InitTask()
 	app.StartServer()
 	return nil
