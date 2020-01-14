@@ -86,13 +86,13 @@ type UploadReceiptCodeRes struct {
 }
 
 type PayResultNotifyReq struct {
-	PayChannel     string
-	PayeeAccountId int
-	Payer          string
-	PayAmount      string
-	SuccessTime    string
+	PayChannel     string `json:"payChannel"`
+	PayeeAccountId int    `json:"payeeAccountId"`
+	Payer          string `json:"payer"`
+	PayAmount      string `json:"payAmount"`
+	SuccessTime    string `json:"successTime"`
 }
 
 type PayResultNotifyRes struct {
-	PayStatus string
+	PayStatus string `json:"payStatus"`
 }

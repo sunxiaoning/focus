@@ -265,3 +265,48 @@ func UploadReceiptCode(ctx context.Context) *ppaytype.UploadReceiptCodeRes {
 		ReceiptCodeUrl: receiptCodeEntity.ReceiptCodeUrl,
 	}
 }
+
+func ResultNotify(ctx context.Context) *ppaytype.PayResultNotifyRes {
+	payNotifyReq := ctx.Value("payNotifyReq").(*ppaytype.PayResultNotifyReq)
+	if strutil.IsBlank(payNotifyReq.PayChannel) {
+		types.InvalidParamPanic("payChannel can't be empty!")
+	}
+	if types.PayChannels()[payNotifyReq.PayChannel] == null {
+		types.ErrPanic(types.PayChannelNotSupport, fmt.Sprintf("payChannel=%s not Support!", payNotifyReq.PayChannel))
+	}
+	if payNotifyReq.PayeeAccountId <= 0 {
+		types.InvalidParamPanic("payeeAccountId is invalid!")
+	}
+	if strutil.IsBlank(payNotifyReq.PayAmount) {
+		types.InvalidParamPanic("payAmount can't be empty!")
+	}
+	if !strutil.IsValidMoney(payNotifyReq.PayAmount) {
+		types.InvalidParamPanic("payAmount is invalid!")
+	}
+	if strutil.IsBlank(payNotifyReq.SuccessTime) {
+		types.InvalidParamPanic("successTime can't be empty!")
+	}
+	if tim, err := timutil.DefParse(payNotifyReq.SuccessTime); err != nil || tim.After(time.Now()) {
+		types.InvalidParamPanic("successTime is invalid!")
+	}
+	logrus.Infof("payNotifyReq: %v", payNotifyReq)
+	var receiptAccountEntity ppaytype.PReceiptAccountEntity
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_account").Where("id = ? and status = 1", payNotifyReq.PayeeAccountId).Find(&receiptAccountEntity))
+	if receiptAccountEntity.ID == 0 {
+		types.NotFoundPanic(fmt.Sprintf("receiptAccount id =%s not exists!", payNotifyReq.PayeeAccountId))
+	}
+	var payOrderEntity ppaytype.PPayOrderEntity
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("pay_amount = ? and pay_channel = ? and pay_status = 'P' and status = 1", payNotifyReq.PayAmount, payNotifyReq.PayChannel).Find(&payOrderEntity))
+	if payOrderEntity.ID == 0 {
+		types.NotFoundPanic("payOrder not exists!")
+	}
+	var receiptCodeEntity ppaytype.PReceiptCodeEntity
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("id = ? and status = 1").Find(&receiptCodeEntity))
+	if receiptCodeEntity.ID == 0 || receiptCodeEntity.PayeeAccountId != payNotifyReq.PayeeAccountId {
+		types.NotFoundPanic("payOrder not exists!")
+	}
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("id = ? and pay_status = 'P' and status = 1").Update("pay_status", orderstatusconst.S))
+	return &ppaytype.PayResultNotifyRes{
+		PayStatus: orderstatusconst.S,
+	}
+}
