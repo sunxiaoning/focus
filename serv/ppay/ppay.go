@@ -271,7 +271,7 @@ func ResultNotify(ctx context.Context) *ppaytype.PayResultNotifyRes {
 	if strutil.IsBlank(payNotifyReq.PayChannel) {
 		types.InvalidParamPanic("payChannel can't be empty!")
 	}
-	if types.PayChannels()[payNotifyReq.PayChannel] == null {
+	if types.PayChannels()[payNotifyReq.PayChannel] == nil {
 		types.ErrPanic(types.PayChannelNotSupport, fmt.Sprintf("payChannel=%s not Support!", payNotifyReq.PayChannel))
 	}
 	if payNotifyReq.PayeeAccountId <= 0 {
