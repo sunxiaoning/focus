@@ -78,7 +78,7 @@ type OrderEntity struct {
 	OrderNo        string
 	MemberId       int
 	ServicePriceId int
-	PurchaseAmount int64
+	PurchaseAmount int
 	StartTime      time.Time
 	FinishedTime   time.Time
 	OrderStatus    string
@@ -92,7 +92,7 @@ type CreateOrderRequest struct {
 	OrderNo        string `json:"orderNo"`
 	MemberId       int    `json:"memberId"`
 	ServicePriceId int    `json:"servicePriceId"`
-	PurchaseAmount int64  `json:"purchaseAmount"`
+	PurchaseAmount int    `json:"purchaseAmount"`
 	CouponNo       string `json:"couponNo"`
 	PayChannel     string `json:"payChannel"`
 }
@@ -119,4 +119,18 @@ type CashierReq struct {
 	PayAmount      string `json:"payAmount"`
 	PayChannel     string `json:"payChannel"`
 	PayReason      string `json:"payReason"`
+}
+
+type PayResultNotifyRes struct {
+}
+
+type MemberServiceEntity struct {
+	ID                  int
+	MemberId            int
+	ServicePriceId      int
+	ServiceId           int
+	OrderId             int
+	RemainingAmount     int
+	DeadlineTime        time.Time
+	MemberServiceStatus int
 }

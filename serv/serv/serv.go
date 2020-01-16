@@ -16,6 +16,7 @@ import (
 	timutil "focus/util/tim"
 	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -186,4 +187,48 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 		CashierParams: cashierParams,
 	}
 	return res
+}
+
+// 支付系统通知服务订单支付结果
+func PayResultNotify(ctx context.Context) *servicetype.PayResultNotifyRes {
+	payResult := ctx.Value("payResult").(ppaytype.BizPayResultReq)
+	if strutil.IsBlank(payResult.PayStatus) || (payResult.PayStatus != orderstatusconst.S && payResult.PayStatus != orderstatusconst.F) {
+		types.InvalidParamPanic("payStatus is invalid!")
+	}
+	if strutil.IsBlank(payResult.OrderAmount) || !strutil.IsValidMoney(payResult.OrderAmount) {
+		types.InvalidParamPanic("orderAmount is invalid!")
+	}
+	if strutil.IsBlank(payResult.PayOrderNo) {
+		types.InvalidParamPanic("payOrderNo is invalid!")
+	}
+	logrus.Infof("payResult:%v", payResult)
+	return tx.NewTxManager().RunTx(ctx, puchaseServiceTx).(*servicetype.PayResultNotifyRes)
+}
+
+func puchaseServiceTx(ctx context.Context) tx.TFunRes {
+	tx := ctx.Value("tx").(*gorm.DB)
+	result := &servicetype.PayResultNotifyRes{}
+	payResult := ctx.Value("payResult").(ppaytype.BizPayResultReq)
+	var serviceOrderEntity servicetype.OrderEntity
+	dbutil.NewDbExecutor(tx.Table("service_order").Where("out_trade_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Find(&serviceOrderEntity))
+	if serviceOrderEntity.ID == 0 {
+		logrus.Infof("serviceOrder not exists! outTradeNo:%s", payResult.PayOrderNo)
+		return result
+	}
+	updateResult := dbutil.NewDbExecutor(tx.Table("service_order").Where("out_trade_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Updates(servicetype.OrderEntity{OrderStatus: payResult.PayStatus, FinishedTime: time.Now()})).RowsAffected()
+	if updateResult != 1 {
+		logrus.Infof("serviceOrder has been processed! outTradeNo:%s", payResult.PayOrderNo)
+		return result
+	}
+	if payResult.PayStatus == orderstatusconst.S {
+		memberServiceEntity := &servicetype.MemberServiceEntity{
+			MemberId:            serviceOrderEntity.MemberId,
+			ServicePriceId:      serviceOrderEntity.ServicePriceId,
+			OrderId:             serviceOrderEntity.ID,
+			DeadlineTime:        time.Now().AddDate(0, serviceOrderEntity.PurchaseAmount, 0),
+			MemberServiceStatus: 1,
+		}
+		dbutil.NewDbExecutor(tx.Table("member_service").Create(memberServiceEntity))
+	}
+	return result
 }

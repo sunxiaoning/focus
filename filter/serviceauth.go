@@ -43,7 +43,7 @@ func serviceAuth(ctx context.Context, rw http.ResponseWriter, req *http.Request)
 	}
 	if !isCachedMemberResources {
 		var memberServices []*memberservicetype
-		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("member_service").Select("member_id,service_id,service_price_id").Where("member_id = ? and status = 1 and user_service_status = 'NORMAL'", gtwReq.MemberId).Find(&memberServices))
+		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("member_service").Select("member_id,service_id,service_price_id").Where("member_id = ? and status = 1 and user_service_status = 1", gtwReq.MemberId).Find(&memberServices))
 		if len(memberServices) == 0 {
 			types.ErrPanic(types.NeedAuthError, "need auth!")
 		}

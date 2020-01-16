@@ -13,6 +13,7 @@ import (
 	servicetype "focus/types/service"
 	strutil "focus/util/strs"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"strconv"
@@ -147,4 +148,17 @@ func uploadReceiptCode(ctx context.Context, rw http.ResponseWriter, req *http.Re
 		FileHeader:     header,
 	})
 	types.NewRestRestResponse(rw, ppayserv.UploadReceiptCode(ctx))
+}
+
+// 支付系统回调通知支付结果
+var PayResultNotify = types.NewController(url("/payResultNotify"), http.MethodPost, payResultNotify)
+
+func payResultNotify(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
+	var payResult ppaytype.BizPayResultReq
+	if err := json.NewDecoder(req.Body).Decode(&payResult); err != nil {
+		types.InvalidParamPanic("json invalid!")
+	}
+	logrus.Infof("payResult: %v", payResult)
+	ctx = context.WithValue(ctx, "payResult", &payResult)
+	types.NewRestRestResponse(rw, servserv.PayResultNotify(ctx))
 }
