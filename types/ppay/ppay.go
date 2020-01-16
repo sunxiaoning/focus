@@ -85,6 +85,7 @@ type UploadReceiptCodeRes struct {
 	ReceiptCodeUrl string
 }
 
+// 手机客户端通知支付系统支付结果请求参数
 type PayResultNotifyReq struct {
 	PayChannel     string `json:"payChannel"`
 	PayeeAccountId int    `json:"payeeAccountId"`
@@ -93,6 +94,16 @@ type PayResultNotifyReq struct {
 	SuccessTime    string `json:"successTime"`
 }
 
+// 手机客户端通知支付系统支付结果返回值
 type PayResultNotifyRes struct {
 	PayStatus string `json:"payStatus"`
+}
+
+// 通知业务方支付结果请求参数
+type BizPayResultReq struct {
+	PayOrderNo  string `json:"payOrderNo"`
+	PayReason   string `json:"payReason"`
+	OrderAmount string `json:"orderAmount"`
+	PayAmount   string `json:"payAmount"`
+	PayStatus   string `json:"payStatus"`
 }
