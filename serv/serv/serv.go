@@ -156,7 +156,7 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 	if err != nil {
 		types.ErrPanic(types.DataDirty, fmt.Sprintf("invalid price=%s", priceEntity.Price))
 	}
-	price = price.Mul(decimal.NewFromInt(reqParam.PurchaseAmount)).Round(2)
+	price = price.Mul(decimal.NewFromInt(int64(reqParam.PurchaseAmount))).Round(2)
 	orderEntity.OrderAmount = price.StringFixedBank(2)
 	orderEntity.PayAmount = price.StringFixedBank(2)
 	orderEntity.CouponNo = reqParam.CouponNo
