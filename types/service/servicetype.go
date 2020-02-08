@@ -121,14 +121,10 @@ type CashierReq struct {
 	PayReason      string `json:"payReason"`
 }
 
-type PayResultNotifyRes struct {
-}
-
 type MemberServiceEntity struct {
 	ID                  int
 	MemberId            int
 	ServicePriceId      int
-	ServiceId           int
 	OrderId             int
 	RemainingAmount     int
 	DeadlineTime        time.Time

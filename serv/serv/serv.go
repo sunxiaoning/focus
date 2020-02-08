@@ -22,8 +22,10 @@ import (
 
 const (
 	CashierUrl = "/api/v1/service/cashier"
+	Success    = "success"
 )
 
+// 最新服务查询
 func QueryLatest(ctx context.Context) *types.PageResponse {
 	reqParam := ctx.Value("reqParam").(*servicetype.QueryLatestReq)
 	if reqParam.PageIndex < 1 {
@@ -50,6 +52,7 @@ func QueryLatest(ctx context.Context) *types.PageResponse {
 	return types.NewPageResponse(total, results)
 }
 
+// 服务详情查询
 func GetServiceById(ctx context.Context) *servicetype.GetByIdRes {
 	serviceId := ctx.Value("serviceId").(int)
 	if serviceId <= 0 {
@@ -63,6 +66,7 @@ func GetServiceById(ctx context.Context) *servicetype.GetByIdRes {
 	return &servicetype.GetByIdRes{ServiceId: service.ID, ServiceType: service.ServiceType, ChineseName: service.ChineseName, ServiceDesc: service.ServiceDesc, PublishTime: timutil.DefFormat(service.PublishTime)}
 }
 
+// 服务套餐查询
 func QueryPrice(ctx context.Context) []*servicetype.QueryPriceRes {
 	serviceId := ctx.Value("serviceId").(int)
 	if serviceId <= 0 {
@@ -82,6 +86,7 @@ func QueryPrice(ctx context.Context) []*servicetype.QueryPriceRes {
 	return results
 }
 
+// 服务价格计算器
 func CalculatePrice(ctx context.Context) *servicetype.CalculatePriceRes {
 	reqParam := ctx.Value("reqParam").(*servicetype.CalculatePriceReq)
 	if reqParam.PriceId <= 0 {
@@ -104,6 +109,7 @@ func CalculatePrice(ctx context.Context) *servicetype.CalculatePriceRes {
 	return &servicetype.CalculatePriceRes{Price: price.StringFixedBank(2)}
 }
 
+// 生成服务订单
 func CreateOrderTx(ctx context.Context) tx.TFunRes {
 	tx := ctx.Value("tx").(*gorm.DB)
 	reqParam := ctx.Value("reqParam").(*servicetype.CreateOrderRequest)
@@ -190,8 +196,8 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 }
 
 // 支付系统通知服务订单支付结果
-func PayResultNotify(ctx context.Context) *servicetype.PayResultNotifyRes {
-	payResult := ctx.Value("payResult").(ppaytype.BizPayResultReq)
+func PayResultNotify(ctx context.Context) string {
+	payResult := ctx.Value("payResult").(*ppaytype.BizPayResultReq)
 	if strutil.IsBlank(payResult.PayStatus) || (payResult.PayStatus != orderstatusconst.S && payResult.PayStatus != orderstatusconst.F) {
 		types.InvalidParamPanic("payStatus is invalid!")
 	}
@@ -202,33 +208,44 @@ func PayResultNotify(ctx context.Context) *servicetype.PayResultNotifyRes {
 		types.InvalidParamPanic("payOrderNo is invalid!")
 	}
 	logrus.Infof("payResult:%v", payResult)
-	return tx.NewTxManager().RunTx(ctx, puchaseServiceTx).(*servicetype.PayResultNotifyRes)
+	return tx.NewTxManager().RunTx(ctx, puchaseServiceTx).(string)
 }
 
+// 支付成功，生成服务权益
 func puchaseServiceTx(ctx context.Context) tx.TFunRes {
 	tx := ctx.Value("tx").(*gorm.DB)
-	result := &servicetype.PayResultNotifyRes{}
-	payResult := ctx.Value("payResult").(ppaytype.BizPayResultReq)
+	payResult := ctx.Value("payResult").(*ppaytype.BizPayResultReq)
 	var serviceOrderEntity servicetype.OrderEntity
-	dbutil.NewDbExecutor(tx.Table("service_order").Where("out_trade_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Find(&serviceOrderEntity))
+	dbutil.NewDbExecutor(tx.Table("service_order").Where("out_order_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Find(&serviceOrderEntity))
 	if serviceOrderEntity.ID == 0 {
-		logrus.Infof("serviceOrder not exists! outTradeNo:%s", payResult.PayOrderNo)
-		return result
+		logrus.Warnf("serviceOrder not exists! outTradeNo:%s", payResult.PayOrderNo)
+		return Success
 	}
-	updateResult := dbutil.NewDbExecutor(tx.Table("service_order").Where("out_trade_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Updates(servicetype.OrderEntity{OrderStatus: payResult.PayStatus, FinishedTime: time.Now()})).RowsAffected()
+	updateResult := dbutil.NewDbExecutor(tx.Table("service_order").Where("out_order_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Updates(servicetype.OrderEntity{OrderStatus: payResult.PayStatus, FinishedTime: time.Now()})).RowsAffected()
 	if updateResult != 1 {
-		logrus.Infof("serviceOrder has been processed! outTradeNo:%s", payResult.PayOrderNo)
-		return result
+		logrus.Warn("serviceOrder has been processed! outTradeNo:%s", payResult.PayOrderNo)
+		return Success
 	}
 	if payResult.PayStatus == orderstatusconst.S {
-		memberServiceEntity := &servicetype.MemberServiceEntity{
-			MemberId:            serviceOrderEntity.MemberId,
-			ServicePriceId:      serviceOrderEntity.ServicePriceId,
-			OrderId:             serviceOrderEntity.ID,
-			DeadlineTime:        time.Now().AddDate(0, serviceOrderEntity.PurchaseAmount, 0),
-			MemberServiceStatus: 1,
+		var memberServiceEntity servicetype.MemberServiceEntity
+		dbutil.NewDbExecutor(tx.Table("member_service").Where("member_id = ? and service_price_id = ? and member_service_status = 1 and status = 1", serviceOrderEntity.MemberId, serviceOrderEntity.ServicePriceId).Find(&memberServiceEntity))
+		if memberServiceEntity.ID == 0 {
+			memberServiceEntity = servicetype.MemberServiceEntity{
+				MemberId:            serviceOrderEntity.MemberId,
+				ServicePriceId:      serviceOrderEntity.ServicePriceId,
+				OrderId:             serviceOrderEntity.ID,
+				DeadlineTime:        time.Now().AddDate(0, serviceOrderEntity.PurchaseAmount, 0),
+				MemberServiceStatus: 1,
+			}
+			dbutil.NewDbExecutor(tx.Table("member_service").Create(&memberServiceEntity))
+		} else {
+			memberServiceEntity.OrderId = serviceOrderEntity.ID
+			memberServiceEntity.DeadlineTime = memberServiceEntity.DeadlineTime.AddDate(0, serviceOrderEntity.PurchaseAmount, 0)
+			dbutil.NewDbExecutor(tx.Table("member_service").Where("id = ? and status = 1", memberServiceEntity.ID).Update(map[string]interface{}{
+				"order_id":      memberServiceEntity.OrderId,
+				"deadline_time": memberServiceEntity.DeadlineTime,
+			}))
 		}
-		dbutil.NewDbExecutor(tx.Table("member_service").Create(memberServiceEntity))
 	}
-	return result
+	return Success
 }

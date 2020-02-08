@@ -160,5 +160,6 @@ func payResultNotify(ctx context.Context, rw http.ResponseWriter, req *http.Requ
 	}
 	logrus.Infof("payResult: %v", payResult)
 	ctx = context.WithValue(ctx, "payResult", &payResult)
-	types.NewRestRestResponse(rw, servserv.PayResultNotify(ctx))
+	rw.WriteHeader(http.StatusOK)
+	rw.Write([]byte(servserv.PayResultNotify(ctx)))
 }

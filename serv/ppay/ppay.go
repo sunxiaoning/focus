@@ -9,6 +9,7 @@ import (
 	"focus/types"
 	notifystatusconst "focus/types/consts/notifystatus"
 	orderstatusconst "focus/types/consts/orderstatus"
+	userconsts "focus/types/consts/user"
 	ppaytype "focus/types/ppay"
 	dbutil "focus/util/db"
 	fileutil "focus/util/file"
@@ -32,6 +33,7 @@ const (
 	PayOrderTimeOut     = 5
 	MaxReceiptCodeSize  = 5 * 1024 * 1024
 	ReceiptCodeRootPath = "/ReceiptCodes"
+	Success             = "success"
 )
 
 var ReceiptCodeMimeTypes = map[string]bool{
@@ -356,14 +358,17 @@ func NotifyBiz() {
 			logrus.Infof("payNotify ID = ? has been processed!", payNotifyResult.ID)
 			return
 		}
-		code, _, _ := httputil.PostJson(payNotifyResult.NotifyUrl, payNotifyResult.NotifyContent, time.Second*10)
-		notifyStatus := notifystatusconst.S
-		if code != http.StatusOK {
-			notifyStatus = notifystatusconst.I
-			if time.Now().Add(time.Hour * 2).Before(payNotifyResult.CreatedTime) {
-				logrus.Warn("notify biz timeout, stop notify!")
-				notifyStatus = "F"
-			}
+		reqHeaders := make(map[string]string)
+		reqHeaders[userconsts.AccessToken] = "JRCASt7GYl0d5g5OAKFgiA=="
+		code, content, _ := httputil.PostJsonWithHeader(payNotifyResult.NotifyUrl, reqHeaders, payNotifyResult.NotifyContent, time.Second*10)
+		notifyStatus := notifystatusconst.I
+
+		// 回调成功，统一返回 success
+		if code == http.StatusOK && string(content) == Success {
+			notifyStatus = notifystatusconst.S
+		} else if time.Now().Add(time.Hour * 2).Before(payNotifyResult.CreatedTime) {
+			logrus.Warn("notify biz timeout, stop notify!")
+			notifyStatus = "F"
 		}
 		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_notify").Where("id = ? and notify_status = ? and status = 1", payNotifyResult.ID, orderstatusconst.P).Update("notify_status", notifyStatus)).RowsAffected()
 	}

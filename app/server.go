@@ -25,6 +25,7 @@ var Apis = []*types.Controller{
 	servcontrl.GetById, servcontrl.QueryPrice,
 	servcontrl.CalculatePrice, servcontrl.CreateOrder, servcontrl.Cashier,
 	servcontrl.GetReceiptCode, servcontrl.UploadReceiptCode,
+	servcontrl.PayResultNotify,
 	ppayctl.PPay,
 }
 
