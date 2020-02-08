@@ -35,11 +35,16 @@ type defaultHttpClient struct {
 func (c *defaultHttpClient) PostJsonWithHeader(url string, headers map[string]string, reqParam interface{}, timeout time.Duration) (code int, respBody []byte, err error) {
 	var jsonBytes []byte
 	if reqParam != nil {
-		jsonBytes, err = json.Marshal(reqParam)
-		if err != nil {
-			return fasthttp.StatusBadRequest, nil, err
+		if jsonStr, ok := reqParam.(string); ok {
+			jsonBytes = []byte(jsonStr)
+		} else {
+			jsonBytes, err = json.Marshal(reqParam)
+			if err != nil {
+				return fasthttp.StatusBadRequest, nil, err
+			}
 		}
 	}
+	jsonBytes = []byte(reqParam.(string))
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
 	for k, v := range headers {
