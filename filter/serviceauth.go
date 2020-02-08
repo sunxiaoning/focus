@@ -43,7 +43,7 @@ func serviceAuth(ctx context.Context, rw http.ResponseWriter, req *http.Request)
 	}
 	if !isCachedMemberResources {
 		var memberServices []*memberservicetype
-		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("member_service").Select("member_id,service_id,service_price_id").Where("member_id = ? and status = 1 and user_service_status = 1", gtwReq.MemberId).Find(&memberServices))
+		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("member_service").Select("member_id,service_price_id").Where("member_id = ? and status = 1 and member_service_status = 1", gtwReq.MemberId).Find(&memberServices))
 		if len(memberServices) == 0 {
 			types.ErrPanic(types.NeedAuthError, "need auth!")
 		}
@@ -52,16 +52,18 @@ func serviceAuth(ctx context.Context, rw http.ResponseWriter, req *http.Request)
 			priceIds = append(priceIds, memberService.ServicePriceId)
 		}
 		var servicePrices []servicepricetype
-		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service_price").Select("id,concurrency_number").Where("id in (?) and status = 1", priceIds).Find(&servicePrices))
+		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service_price").Select("id,service_id, "+
+			"concurrency_number").Where("id in (?) and status = 1", priceIds).Find(&servicePrices))
 		if len(servicePrices) == 0 {
 			types.ErrPanic(types.DataDirty, fmt.Sprintf("priceIds:%v price not config!", priceIds))
 		}
-		servicePriceMap := make(map[int]int)
+		servicePriceMap := make(map[int]servicepricetype)
 		for _, servicePrice := range servicePrices {
-			servicePriceMap[servicePrice.ID] = servicePrice.ConcurrencyNumber
+			servicePriceMap[servicePrice.ID] = servicePrice
 		}
 		for _, memberService := range memberServices {
-			memberService.ConcurrencyNumber = servicePriceMap[memberService.ServicePriceId]
+			memberService.ConcurrencyNumber = servicePriceMap[memberService.ServicePriceId].ConcurrencyNumber
+			memberService.ServiceId = servicePriceMap[memberService.ServicePriceId].ServiceId
 		}
 		memberServiceCache = &memberservicecache{
 			Timestamp:      timutil.DefFormat(time.Now().Add(time.Minute * 3)),
@@ -109,5 +111,6 @@ type memberservicecache struct {
 
 type servicepricetype struct {
 	ID                int
+	ServiceId         int
 	ConcurrencyNumber int
 }

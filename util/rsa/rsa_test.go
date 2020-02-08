@@ -6,7 +6,7 @@ import (
 )
 
 func TestSign(t *testing.T) {
-	origin := strings.Join([]string{"2020-01-02 12:00:30", "999", "/ppay/notify", "{\"test\": 1}"}, ",")
+	origin := strings.Join([]string{"2020-01-02 12:00:30", "999", "/ppay/notify", "{\"payChannel\":\"ALIPAY\",\"payeeAccountId\":3452,\"payer\":\"xiaoning\",\"payAmount\":\"60.00\",\"successTime\":\"2020-01-02 12:00:30\"}"}, ",")
 	priKey, err := ParseKeyFromString(`-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCsmRZ+euoLSUH4
 QSXacwDUsq+G/lFwu/oEHrIn0RR9CbfPIWg0UwOAq4Cg4dDi+SoTByufm39fMm0w

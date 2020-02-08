@@ -107,3 +107,11 @@ type BizPayResultReq struct {
 	PayAmount   string `json:"payAmount"`
 	PayStatus   string `json:"payStatus"`
 }
+
+type PPayNotifyEntity struct {
+	ID            int
+	NotifyUrl     string
+	NotifyStatus  string
+	NotifyContent string
+	CreatedTime   time.Time
+}

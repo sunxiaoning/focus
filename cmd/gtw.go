@@ -53,7 +53,7 @@ func RunGtw() error {
 		return err
 	}
 	app.InitServer(cfg.FocusCtx.Cfg.Server.ListenPort+1, app.Gtw, app.GtwFilters)
-	go app.InitTask()
+	go app.InitGtwTask()
 	app.StartServer()
 	return nil
 }

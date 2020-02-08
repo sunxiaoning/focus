@@ -2,14 +2,17 @@ package ppayserv
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"focus/cfg"
 	"focus/tx"
 	"focus/types"
+	notifystatusconst "focus/types/consts/notifystatus"
 	orderstatusconst "focus/types/consts/orderstatus"
 	ppaytype "focus/types/ppay"
 	dbutil "focus/util/db"
 	fileutil "focus/util/file"
+	httputil "focus/util/http"
 	"focus/util/idgen"
 	strutil "focus/util/strs"
 	timutil "focus/util/tim"
@@ -17,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"strconv"
@@ -266,7 +270,8 @@ func UploadReceiptCode(ctx context.Context) *ppaytype.UploadReceiptCodeRes {
 	}
 }
 
-func ResultNotify(ctx context.Context) *ppaytype.PayResultNotifyRes {
+func ResultNotifyTx(ctx context.Context) tx.TFunRes {
+	tx := ctx.Value("tx").(*gorm.DB)
 	payNotifyReq := ctx.Value("payNotifyReq").(*ppaytype.PayResultNotifyReq)
 	if strutil.IsBlank(payNotifyReq.PayChannel) {
 		types.InvalidParamPanic("payChannel can't be empty!")
@@ -291,22 +296,75 @@ func ResultNotify(ctx context.Context) *ppaytype.PayResultNotifyRes {
 	}
 	logrus.Infof("payNotifyReq: %v", payNotifyReq)
 	var receiptAccountEntity ppaytype.PReceiptAccountEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_account").Where("id = ? and status = 1", payNotifyReq.PayeeAccountId).Find(&receiptAccountEntity))
+	dbutil.NewDbExecutor(tx.Table("personal_receipt_account").Where("id = ? and status = 1", payNotifyReq.PayeeAccountId).Find(&receiptAccountEntity))
 	if receiptAccountEntity.ID == 0 {
 		types.NotFoundPanic(fmt.Sprintf("receiptAccount id =%s not exists!", payNotifyReq.PayeeAccountId))
 	}
 	var payOrderEntity ppaytype.PPayOrderEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("pay_amount = ? and pay_channel = ? and pay_status = 'P' and status = 1", payNotifyReq.PayAmount, payNotifyReq.PayChannel).Find(&payOrderEntity))
+	dbutil.NewDbExecutor(tx.Table("personal_pay_order").Where("pay_amount = ? and pay_channel = ? and pay_status = 'P' and status = 1", payNotifyReq.PayAmount, payNotifyReq.PayChannel).Find(&payOrderEntity))
 	if payOrderEntity.ID == 0 {
 		types.NotFoundPanic("payOrder not exists!")
 	}
 	var receiptCodeEntity ppaytype.PReceiptCodeEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("id = ? and status = 1", payOrderEntity.ReceiptCodeId).Find(&receiptCodeEntity))
+	dbutil.NewDbExecutor(tx.Table("personal_receipt_code").Where("id = ? and status = 1", payOrderEntity.ReceiptCodeId).Find(&receiptCodeEntity))
 	if receiptCodeEntity.ID == 0 || receiptCodeEntity.PayeeAccountId != payNotifyReq.PayeeAccountId {
 		types.NotFoundPanic("payOrder not exists!")
 	}
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("id = ? and pay_status = 'P' and status = 1", payOrderEntity.ID).Update("pay_status", orderstatusconst.S))
-	return &ppaytype.PayResultNotifyRes{
+	updateResult := dbutil.NewDbExecutor(tx.Table("personal_pay_order").Where("id = ? and pay_status = 'P' and status = 1", payOrderEntity.ID).Update(ppaytype.PPayOrderEntity{PayStatus: orderstatusconst.S, FinishTime: time.Now()})).RowsAffected()
+	result := &ppaytype.PayResultNotifyRes{
 		PayStatus: orderstatusconst.S,
+	}
+	if updateResult != 1 {
+		logrus.Infof("payOrder payOrderNo=%s has been processed!", payOrderEntity.PayOrderNo)
+		return result
+	}
+	payOrderEntity.PayStatus = orderstatusconst.S
+	InsertPayResultNotify(tx, payOrderEntity)
+	return result
+}
+
+func InsertPayResultNotify(db *gorm.DB, payOrderEntity ppaytype.PPayOrderEntity) {
+
+	// 发送消息通知业务方支付成功
+	notifyContent := ppaytype.BizPayResultReq{
+		PayOrderNo:  payOrderEntity.PayOrderNo,
+		PayReason:   payOrderEntity.PayReason,
+		OrderAmount: payOrderEntity.OrderAmount,
+		PayAmount:   payOrderEntity.PayAmount,
+		PayStatus:   payOrderEntity.PayStatus,
+	}
+	notifyContentResult, _ := json.Marshal(notifyContent)
+	ppayNotifyEntity := &ppaytype.PPayNotifyEntity{
+		NotifyUrl:     payOrderEntity.NotifyUrl,
+		NotifyStatus:  notifystatusconst.I,
+		NotifyContent: string(notifyContentResult),
+		CreatedTime:   time.Now(),
+	}
+	dbutil.NewDbExecutor(db.Table("personal_pay_notify").Create(ppayNotifyEntity))
+}
+
+func NotifyBiz() {
+	var payNotifyResults []*ppaytype.PPayNotifyEntity
+	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_notify").Where("notify_status = ? and status = 1", notifystatusconst.I).Find(&payNotifyResults))
+	if payNotifyResults == nil || len(payNotifyResults) == 0 {
+		logrus.Info("payNotifyResult is empty,end!")
+		return
+	}
+	for _, payNotifyResult := range payNotifyResults {
+		updateResult := dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_notify").Where("id = ? and notify_status = ? and status = 1", payNotifyResult.ID, notifystatusconst.I).Update("notify_status", notifystatusconst.P)).RowsAffected()
+		if updateResult != 1 {
+			logrus.Infof("payNotify ID = ? has been processed!", payNotifyResult.ID)
+			return
+		}
+		code, _, _ := httputil.PostJson(payNotifyResult.NotifyUrl, payNotifyResult.NotifyContent, time.Second*10)
+		notifyStatus := notifystatusconst.S
+		if code != http.StatusOK {
+			notifyStatus = notifystatusconst.I
+			if time.Now().Add(time.Hour * 2).Before(payNotifyResult.CreatedTime) {
+				logrus.Warn("notify biz timeout, stop notify!")
+				notifyStatus = "F"
+			}
+		}
+		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_notify").Where("id = ? and notify_status = ? and status = 1", payNotifyResult.ID, orderstatusconst.P).Update("notify_status", notifyStatus)).RowsAffected()
 	}
 }
