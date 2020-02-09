@@ -1,6 +1,7 @@
 package dbutil
 
 import (
+	"context"
 	"focus/types"
 	pagetype "focus/types/page"
 	"github.com/jinzhu/gorm"
@@ -16,7 +17,7 @@ func NewDbExecutor(db *gorm.DB) *dbExecutor {
 	return dbExe
 }
 
-func (dbExecutor *dbExecutor) PageQuery(page *pagetype.PageInfo, count *int, results interface{}) {
+func (dbExecutor *dbExecutor) PageQuery(ctx context.Context, page *pagetype.PageInfo, count *int, results interface{}) {
 	dbExecutor.DB.Count(count).Offset((page.PageIndex - 1) * page.PageSize).Limit(page.PageSize).Find(results)
 }
 

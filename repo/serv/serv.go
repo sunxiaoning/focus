@@ -1,9 +1,10 @@
 package servrepo
 
 import (
+	"context"
 	"focus/cfg"
 	pagetype "focus/types/page"
-	servicetype "focus/types/service"
+	servtype "focus/types/serv"
 	dbutil "focus/util/db"
 	"github.com/jinzhu/gorm"
 )
@@ -14,7 +15,7 @@ const (
 )
 
 // 查询最新服务信息
-func QueryLatest(pageQuery pagetype.PageQuery, services *[]*servicetype.ServiceEntity, total *int) {
+func QueryLatest(ctx context.Context, pageQuery pagetype.PageQuery) (services []*servtype.ServiceEntity, total int) {
 
 	db := getDb()
 
@@ -25,7 +26,18 @@ func QueryLatest(pageQuery pagetype.PageQuery, services *[]*servicetype.ServiceE
 	db = db.Where(normalServiceQuery)
 
 	// 查询分页
-	dbutil.NewDbExecutor(db).PageQuery(pageQuery.Page, total, services)
+	dbutil.NewDbExecutor(db).PageQuery(ctx, pageQuery.Page, &total, &services)
+	return services, total
+}
+
+// 获取详情
+func GetById(ctx context.Context, serviceId int) *servtype.ServiceEntity {
+	db := getDb()
+	db = db.Where("id = ?", serviceId)
+	db = db.Where(normalServiceQuery)
+	service := &servtype.ServiceEntity{}
+	dbutil.NewDbExecutor(db.Find(service))
+	return service
 }
 
 func getDb() *gorm.DB {

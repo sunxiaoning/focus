@@ -10,7 +10,7 @@ import (
 	"focus/tx"
 	"focus/types"
 	ppaytype "focus/types/ppay"
-	servicetype "focus/types/service"
+	servtype "focus/types/serv"
 	strutil "focus/util/strs"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -32,12 +32,11 @@ func url(path string) string {
 var QueryLatest = types.NewController(url("/queryLatest"), http.MethodPost, queryLatest)
 
 func queryLatest(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
-	reqParam := servicetype.NewQueryLatestReq()
+	reqParam := servtype.NewQueryLatestReq()
 	if err := json.NewDecoder(req.Body).Decode(reqParam); err != nil {
 		types.InvalidParamPanic("invalid json!")
 	}
-	ctx = context.WithValue(ctx, "reqParam", reqParam)
-	types.NewRestRestResponse(rw, servserv.QueryLatest(ctx))
+	types.NewRestRestResponse(rw, servserv.QueryLatest(ctx, reqParam))
 }
 
 var GetById = types.NewController(url("/getById"), http.MethodGet, getById)
@@ -51,8 +50,7 @@ func getById(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		types.InvalidParamPanic("serviceId is invalid!")
 	}
-	ctx = context.WithValue(ctx, "serviceId", serviceId)
-	types.NewRestRestResponse(rw, servserv.GetServiceById(ctx))
+	types.NewRestRestResponse(rw, servserv.GetById(ctx, serviceId))
 }
 
 var QueryPrice = types.NewController(url("/queryPrice"), http.MethodGet, queryPrice)
@@ -66,14 +64,13 @@ func queryPrice(ctx context.Context, rw http.ResponseWriter, req *http.Request) 
 	if err != nil {
 		types.InvalidParamPanic("serviceId is invalid!")
 	}
-	ctx = context.WithValue(ctx, "serviceId", serviceId)
-	types.NewRestRestResponse(rw, servserv.QueryPrice(ctx))
+	types.NewRestRestResponse(rw, servserv.QueryPrice(ctx, serviceId))
 }
 
 var CalculatePrice = types.NewController(url("/calculatePrice"), http.MethodPost, calculatePrice)
 
 func calculatePrice(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
-	reqParam := servicetype.NewCalculatePriceReq()
+	reqParam := servtype.NewCalculatePriceReq()
 	if err := json.NewDecoder(req.Body).Decode(reqParam); err != nil {
 		types.InvalidParamPanic("invalid json!")
 	}
@@ -84,7 +81,7 @@ func calculatePrice(ctx context.Context, rw http.ResponseWriter, req *http.Reque
 var CreateOrder = types.NewController(url("/createOrder"), http.MethodPost, createOrder)
 
 func createOrder(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
-	var reqParam = servicetype.NewCreateOrderReq()
+	var reqParam = servtype.NewCreateOrderReq()
 	if err := json.NewDecoder(req.Body).Decode(reqParam); err != nil {
 		types.InvalidParamPanic("invalid json format!")
 	}

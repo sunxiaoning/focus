@@ -1,4 +1,4 @@
-package servicetype
+package servtype
 
 import (
 	"focus/types"
