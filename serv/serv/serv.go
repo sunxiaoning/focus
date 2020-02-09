@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"focus/cfg"
+	servrepo "focus/repo/serv"
 	ppayserv "focus/serv/ppay"
 	"focus/tx"
 	"focus/types"
 	"focus/types/consts/orderstatus"
 	usertype "focus/types/member"
+	pagetype "focus/types/page"
 	ppaytype "focus/types/ppay"
 	servicetype "focus/types/service"
 	dbutil "focus/util/db"
@@ -34,16 +36,20 @@ func QueryLatest(ctx context.Context) *types.PageResponse {
 	if reqParam.PageSize < 1 || reqParam.PageSize > 1000 {
 		types.InvalidParamPanic("pageSize is invalid!")
 	}
-	query := map[string]interface{}{}
+	queryParams := map[string]interface{}{}
 	if reqParam.ChineseName != "" {
-		query["chinese_name"] = reqParam.ChineseName
+		queryParams["chinese_name"] = reqParam.ChineseName
 	}
 	if reqParam.ServiceType != 0 {
-		query["service_type"] = reqParam.ServiceType
+		queryParams["service_type"] = reqParam.ServiceType
+	}
+	pageQuery := pagetype.PageQuery{
+		Page:   pagetype.NewPage(reqParam.PageIndex, reqParam.PageSize),
+		Params: queryParams,
 	}
 	var services []*servicetype.ServiceEntity
 	var total int
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service").Where(query).Where("service_status = 'FWZ' and status = 1")).PageQuery(reqParam.PageIndex, reqParam.PageSize, &total, &services)
+	servrepo.QueryLatest(pageQuery, &services, &total)
 	var results []*servicetype.QueryLatestRes
 	for _, service := range services {
 		result := &servicetype.QueryLatestRes{ServiceId: service.ID, ServiceType: service.ServiceType, ChineseName: service.ChineseName, ServiceDesc: service.ServiceDesc, PublishTime: timutil.DefFormat(service.PublishTime)}
