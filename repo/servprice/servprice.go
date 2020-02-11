@@ -14,7 +14,7 @@ const (
 )
 
 func QueryByServiceId(ctx context.Context, serviceId int) []*servtype.PriceEntity {
-	db := getDb()
+	db := getDb(ctx)
 	db = db.Where("service_id = ?", serviceId)
 	db = db.Where(normalPriceQuery)
 	var prices []*servtype.PriceEntity
@@ -22,6 +22,20 @@ func QueryByServiceId(ctx context.Context, serviceId int) []*servtype.PriceEntit
 	return prices
 }
 
-func getDb() *gorm.DB {
+func GetById(ctx context.Context, id int) *servtype.PriceEntity {
+	db := getDb(ctx)
+	db = db.Where("id = ?", id)
+	db = db.Where(normalPriceQuery)
+	var priceEntity servtype.PriceEntity
+	dbutil.NewDbExecutor(db.Find(&priceEntity))
+	return &priceEntity
+}
+
+func getDb(ctx context.Context) *gorm.DB {
+	tx, ok := ctx.Value("tx").(*gorm.DB)
+	if ok {
+		tx = tx.Table(tabName)
+		return tx
+	}
 	return cfg.FocusCtx.DB.Table(tabName)
 }

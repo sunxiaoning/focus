@@ -74,8 +74,7 @@ func calculatePrice(ctx context.Context, rw http.ResponseWriter, req *http.Reque
 	if err := json.NewDecoder(req.Body).Decode(reqParam); err != nil {
 		types.InvalidParamPanic("invalid json!")
 	}
-	ctx = context.WithValue(ctx, "reqParam", reqParam)
-	types.NewRestRestResponse(rw, servserv.CalculatePrice(ctx))
+	types.NewRestRestResponse(rw, servserv.CalculatePrice(ctx, reqParam))
 }
 
 var CreateOrder = types.NewController(url("/createOrder"), http.MethodPost, createOrder)

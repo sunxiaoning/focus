@@ -17,7 +17,7 @@ const (
 // 查询最新服务信息
 func QueryLatest(ctx context.Context, pageQuery pagetype.PageQuery) (services []*servtype.ServiceEntity, total int) {
 
-	db := getDb()
+	db := getDb(ctx)
 
 	// 参数
 	db = db.Where(pageQuery.Params)
@@ -32,7 +32,7 @@ func QueryLatest(ctx context.Context, pageQuery pagetype.PageQuery) (services []
 
 // 获取详情
 func GetById(ctx context.Context, serviceId int) *servtype.ServiceEntity {
-	db := getDb()
+	db := getDb(ctx)
 	db = db.Where("id = ?", serviceId)
 	db = db.Where(normalServiceQuery)
 	service := &servtype.ServiceEntity{}
@@ -40,6 +40,11 @@ func GetById(ctx context.Context, serviceId int) *servtype.ServiceEntity {
 	return service
 }
 
-func getDb() *gorm.DB {
+func getDb(ctx context.Context) *gorm.DB {
+	tx, ok := ctx.Value("tx").(*gorm.DB)
+	if ok {
+		tx = tx.Table(tabName)
+		return tx
+	}
 	return cfg.FocusCtx.DB.Table(tabName)
 }

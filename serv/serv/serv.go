@@ -3,14 +3,14 @@ package servserv
 import (
 	"context"
 	"fmt"
-	"focus/cfg"
+	memberrepo "focus/repo/member"
 	servrepo "focus/repo/serv"
+	servorderrepo "focus/repo/servorder"
 	servpricerepo "focus/repo/servprice"
 	ppayserv "focus/serv/ppay"
 	"focus/tx"
 	"focus/types"
 	"focus/types/consts/orderstatus"
-	usertype "focus/types/member"
 	pagetype "focus/types/page"
 	ppaytype "focus/types/ppay"
 	servtype "focus/types/serv"
@@ -26,6 +26,7 @@ import (
 const (
 	CashierUrl = "/api/v1/service/cashier"
 	Success    = "success"
+	NotifyUrl  = "http://localhost:7001/api/v1/notify/ppay"
 )
 
 // 最新服务查询
@@ -84,16 +85,14 @@ func QueryPrice(ctx context.Context, serviceId int) []*servtype.QueryPriceRes {
 }
 
 // 服务价格计算器
-func CalculatePrice(ctx context.Context) *servtype.CalculatePriceRes {
-	reqParam := ctx.Value("reqParam").(*servtype.CalculatePriceReq)
+func CalculatePrice(ctx context.Context, reqParam *servtype.CalculatePriceReq) *servtype.CalculatePriceRes {
 	if reqParam.PriceId <= 0 {
 		types.InvalidParamPanic("priceId param is invalid!")
 	}
 	if reqParam.Amount <= 0 {
 		types.InvalidParamPanic("amount param is invalid!")
 	}
-	var priceEntity servtype.PriceEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("service_price").Where("id = ? and status = 1", reqParam.PriceId).First(&priceEntity))
+	priceEntity := servpricerepo.GetById(ctx, reqParam.PriceId)
 	if priceEntity.ID == 0 {
 		types.NotFoundPanic("price not exists!")
 	}
@@ -108,46 +107,10 @@ func CalculatePrice(ctx context.Context) *servtype.CalculatePriceRes {
 
 // 生成服务订单
 func CreateOrderTx(ctx context.Context) tx.TFunRes {
-	tx := ctx.Value("tx").(*gorm.DB)
 	reqParam := ctx.Value("reqParam").(*servtype.CreateOrderRequest)
-	if reqParam.OrderNo == "" {
-		types.InvalidParamPanic("orderNo can't be empty!")
-	}
-	if reqParam.MemberId <= 0 {
-		types.InvalidParamPanic("memberId is invalid!")
-	}
-	if reqParam.ServicePriceId <= 0 {
-		types.InvalidParamPanic("servicePriceId is invalid!")
-	}
-	if reqParam.PurchaseAmount <= 1 {
-		types.InvalidParamPanic("purchaseAmount is invalid!!")
-	}
-	if strutil.IsBlank(reqParam.PayChannel) {
-		types.InvalidParamPanic("payChannel can't be empty!")
-	}
-	if types.PayChannels()[reqParam.PayChannel] == nil {
-		types.ErrPanic(types.PayChannelNotSupport, "payChannel not support!")
-	}
-	var memberEntity usertype.MemberEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("member").Where("id = ? and status = 1", reqParam.MemberId).Find(&memberEntity))
-	if memberEntity.ID == 0 {
-		types.NotFoundPanic(fmt.Sprintf("memberId %v not exists!", reqParam.MemberId))
-	}
-	var orderEntity servtype.OrderEntity
-	dbutil.NewDbExecutor(tx.Table("service_order").Where("order_no = ? and status = 1", reqParam.OrderNo).Find(&orderEntity))
-	if orderEntity.ID != 0 {
-		types.RepeatRequestPanic(fmt.Sprintf("order orderNo=%s already exists!", reqParam.OrderNo))
-	}
-	var priceEntity servtype.PriceEntity
-	dbutil.NewDbExecutor(tx.Table("service_price").Where("id = ? and status = 1", reqParam.ServicePriceId).Find(&priceEntity))
-	if priceEntity.ID == 0 {
-		types.NotFoundPanic(fmt.Sprintf("price priceId=%d not exists!", reqParam.ServicePriceId))
-	}
-	var serviceEntity servtype.ServiceEntity
-	dbutil.NewDbExecutor(tx.Table("service").Where("id = ? and service_status = 'FWZ' and status = 1", priceEntity.ServiceId).Find(&serviceEntity))
-	if serviceEntity.ID == 0 {
-		types.NotFoundPanic(fmt.Sprintf("service %d not found!", priceEntity.ServiceId))
-	}
+
+	// 下单校验
+	orderEntity, priceEntity, serviceEntity := createOrderValidation(ctx, reqParam)
 	orderEntity.OrderNo = reqParam.OrderNo
 	orderEntity.MemberId = reqParam.MemberId
 	orderEntity.ServicePriceId = reqParam.ServicePriceId
@@ -159,12 +122,18 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 	if err != nil {
 		types.ErrPanic(types.DataDirty, fmt.Sprintf("invalid price=%s", priceEntity.Price))
 	}
+
+	// 价格计算
 	price = price.Mul(decimal.NewFromInt(int64(reqParam.PurchaseAmount))).Round(2)
 	orderEntity.OrderAmount = price.StringFixedBank(2)
 	orderEntity.PayAmount = price.StringFixedBank(2)
 	orderEntity.CouponNo = reqParam.CouponNo
 	orderEntity.PayChannel = reqParam.PayChannel
-	dbutil.NewDbExecutor(tx.Table("service_order").Create(&orderEntity))
+
+	// 生成服务订单
+	servorderrepo.Create(ctx, orderEntity)
+
+	// 生成支付订单
 	createPayOrderReq := &ppaytype.CreateOrderReq{
 		OutTradeNo:     orderEntity.OrderNo,
 		OrderAmount:    orderEntity.OrderAmount,
@@ -172,11 +141,14 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 		PayChannel:     orderEntity.PayChannel,
 		PayeeAccountId: types.PayChannels()[orderEntity.PayChannel].AccountId,
 		PayReason:      fmt.Sprintf("购买服务:%v,套餐:%v,数量：%v", serviceEntity.ChineseName, priceEntity.PriceName, reqParam.PurchaseAmount),
-		NotifyUrl:      fmt.Sprintf("http://localhost:%d/api/v1/notify/ppay", cfg.FocusCtx.Cfg.Server.ListenPort),
+		NotifyUrl:      NotifyUrl,
 	}
-	ctx = context.WithValue(ctx, "reqParam", createPayOrderReq)
-	createPayOrderRes := ppayserv.CreateOrder(ctx)
-	dbutil.NewDbExecutor(tx.Table("service_order").Where("id = ? and status = 1", orderEntity.ID).Update("out_order_no", createPayOrderRes.PayOrderNo))
+	createPayOrderRes := ppayserv.CreateOrder(ctx, createPayOrderReq)
+
+	// 更新服务订单的支付订单
+	servorderrepo.Submit(ctx, orderEntity.ID, createPayOrderRes.PayOrderNo)
+
+	// 支付收银台请求参数
 	cashierParams := &servtype.CashierReq{
 		PayOrderNo:     createPayOrderRes.PayOrderNo,
 		ServiceOrderNo: orderEntity.OrderNo,
@@ -190,6 +162,44 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 		CashierParams: cashierParams,
 	}
 	return res
+}
+
+func createOrderValidation(ctx context.Context, reqParam *servtype.CreateOrderRequest) (*servtype.OrderEntity, *servtype.PriceEntity, *servtype.ServiceEntity) {
+	if reqParam.OrderNo == "" {
+		types.InvalidParamPanic("orderNo can't be empty!")
+	}
+	if reqParam.MemberId <= 0 {
+		types.InvalidParamPanic("memberId is invalid!")
+	}
+	if reqParam.ServicePriceId <= 0 {
+		types.InvalidParamPanic("servicePriceId is invalid!")
+	}
+	if reqParam.PurchaseAmount < 1 {
+		types.InvalidParamPanic("purchaseAmount is invalid!!")
+	}
+	if strutil.IsBlank(reqParam.PayChannel) {
+		types.InvalidParamPanic("payChannel can't be empty!")
+	}
+	if types.PayChannels()[reqParam.PayChannel] == nil {
+		types.ErrPanic(types.PayChannelNotSupport, "payChannel not support!")
+	}
+	memberEntity := memberrepo.GetById(ctx, reqParam.MemberId)
+	if memberEntity.ID == 0 {
+		types.NotFoundPanic(fmt.Sprintf("memberId %v not exists!", reqParam.MemberId))
+	}
+	orderEntity := servorderrepo.GetByOrderNo(ctx, reqParam.OrderNo)
+	if orderEntity.ID != 0 {
+		types.RepeatRequestPanic(fmt.Sprintf("order orderNo=%s already exists!", reqParam.OrderNo))
+	}
+	priceEntity := servpricerepo.GetById(ctx, reqParam.ServicePriceId)
+	if priceEntity.ID == 0 {
+		types.NotFoundPanic(fmt.Sprintf("price priceId=%d not exists!", reqParam.ServicePriceId))
+	}
+	serviceEntity := servrepo.GetById(ctx, priceEntity.ServiceId)
+	if serviceEntity.ID == 0 {
+		types.NotFoundPanic(fmt.Sprintf("service %d not found!", priceEntity.ServiceId))
+	}
+	return orderEntity, priceEntity, serviceEntity
 }
 
 // 支付系统通知服务订单支付结果

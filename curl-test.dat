@@ -8,7 +8,7 @@ curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"PriceId":3, "
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574016", "MemberId": 999, "ServicePriceId":999, "PurchaseAmount":3,"PayChannel":"ALIPAY1"}' http://localhost:7001/api/v1/service/createOrder
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574016", "MemberId": 999, "ServicePriceId":999, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574017", "MemberId": 9999, "ServicePriceId":3, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
-curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574017", "MemberId": 999, "ServicePriceId":3, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
+curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574019", "MemberId": 999, "ServicePriceId":3, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
 
 
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"payOrderNo":"281288675206104064","outOrderNo":"280554233231574017","orderAmount":"60.00","payAmount":"60.00","payChannel":"ALIPAY","payReason":"购买服务:券,套餐:小微企业套餐,数量：3"}' http://localhost:7001/api/v1/service/cashier
