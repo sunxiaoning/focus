@@ -7,6 +7,7 @@ import (
 	servtype "focus/types/serv"
 	dbutil "focus/util/db"
 	"github.com/jinzhu/gorm"
+	"time"
 )
 
 const (
@@ -21,6 +22,23 @@ func GetByOrderNo(ctx context.Context, orderNo string) *servtype.OrderEntity {
 	var orderEntity servtype.OrderEntity
 	dbutil.NewDbExecutor(db.Find(&orderEntity))
 	return &orderEntity
+}
+
+func GetWaittingOrderByPayOrderNo(ctx context.Context, payOrderNo string) *servtype.OrderEntity {
+	db := getDb(ctx)
+	db = db.Where("order_no = ? and order_status = 'P'", payOrderNo)
+	db = db.Where(normalQuery)
+	var orderEntity servtype.OrderEntity
+	dbutil.NewDbExecutor(db.Find(&orderEntity))
+	return &orderEntity
+}
+
+func UpdateOrderStatusByPayOrderNoAndPayResult(ctx context.Context, payOrderNo string, toStatus string) int64 {
+	db := getDb(ctx)
+	db = db.Where("out_order_no = ?", payOrderNo)
+	db = db.Where("order_status = 'P'")
+	db = db.Where(normalQuery)
+	return dbutil.NewDbExecutor(db.Updates(servtype.OrderEntity{OrderStatus: toStatus, FinishedTime: time.Now()})).RowsAffected()
 }
 
 func Create(ctx context.Context, orderEntity *servtype.OrderEntity) {

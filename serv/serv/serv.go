@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	memberrepo "focus/repo/member"
+	memservrepo "focus/repo/memserv"
 	servrepo "focus/repo/serv"
 	servorderrepo "focus/repo/servorder"
 	servpricerepo "focus/repo/servprice"
@@ -14,10 +15,8 @@ import (
 	pagetype "focus/types/page"
 	ppaytype "focus/types/ppay"
 	servtype "focus/types/serv"
-	dbutil "focus/util/db"
 	strutil "focus/util/strs"
 	timutil "focus/util/tim"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -150,12 +149,12 @@ func CreateOrderTx(ctx context.Context) tx.TFunRes {
 
 	// 支付收银台请求参数
 	cashierParams := &servtype.CashierReq{
-		PayOrderNo:     createPayOrderRes.PayOrderNo,
-		ServiceOrderNo: orderEntity.OrderNo,
-		OrderAmount:    createPayOrderReq.OrderAmount,
-		PayAmount:      createPayOrderReq.PayAmount,
-		PayChannel:     createPayOrderReq.PayChannel,
-		PayReason:      createPayOrderReq.PayReason,
+		PayOrderNo:  createPayOrderRes.PayOrderNo,
+		OutOrderNo:  orderEntity.OrderNo,
+		OrderAmount: createPayOrderReq.OrderAmount,
+		PayAmount:   createPayOrderReq.PayAmount,
+		PayChannel:  createPayOrderReq.PayChannel,
+		PayReason:   createPayOrderReq.PayReason,
 	}
 	res := &servtype.CreateOrderRes{
 		CashierUrl:    CashierUrl,
@@ -203,8 +202,7 @@ func createOrderValidation(ctx context.Context, reqParam *servtype.CreateOrderRe
 }
 
 // 支付系统通知服务订单支付结果
-func PayResultNotify(ctx context.Context) string {
-	payResult := ctx.Value("payResult").(*ppaytype.BizPayResultReq)
+func PayResultNotify(ctx context.Context, payResult *ppaytype.BizPayResultReq) string {
 	if strutil.IsBlank(payResult.PayStatus) || (payResult.PayStatus != orderstatusconst.S && payResult.PayStatus != orderstatusconst.F) {
 		types.InvalidParamPanic("payStatus is invalid!")
 	}
@@ -215,43 +213,48 @@ func PayResultNotify(ctx context.Context) string {
 		types.InvalidParamPanic("payOrderNo is invalid!")
 	}
 	logrus.Infof("payResult:%v", payResult)
-	return tx.NewTxManager().RunTx(ctx, puchaseServiceTx).(string)
+	return tx.NewTxManager().RunTx(ctx, purchaseServiceTx).(string)
 }
 
 // 支付成功，生成服务权益
-func puchaseServiceTx(ctx context.Context) tx.TFunRes {
-	tx := ctx.Value("tx").(*gorm.DB)
+func purchaseServiceTx(ctx context.Context) tx.TFunRes {
 	payResult := ctx.Value("payResult").(*ppaytype.BizPayResultReq)
-	var serviceOrderEntity servtype.OrderEntity
-	dbutil.NewDbExecutor(tx.Table("service_order").Where("out_order_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Find(&serviceOrderEntity))
+
+	// 查询服务订单
+	serviceOrderEntity := servorderrepo.GetWaittingOrderByPayOrderNo(ctx, payResult.PayOrderNo)
 	if serviceOrderEntity.ID == 0 {
 		logrus.Warnf("serviceOrder not exists! outTradeNo:%s", payResult.PayOrderNo)
 		return Success
 	}
-	updateResult := dbutil.NewDbExecutor(tx.Table("service_order").Where("out_order_no = ? and order_status = 'P' and status = 1", payResult.PayOrderNo).Updates(servtype.OrderEntity{OrderStatus: payResult.PayStatus, FinishedTime: time.Now()})).RowsAffected()
+
+	// 根据支付结果，更新服务订单状态
+	updateResult := servorderrepo.UpdateOrderStatusByPayOrderNoAndPayResult(ctx, payResult.PayOrderNo, payResult.PayStatus)
 	if updateResult != 1 {
 		logrus.Warn("serviceOrder has been processed! outTradeNo:%s", payResult.PayOrderNo)
 		return Success
 	}
+
+	// 支付成功，生成或更新购买记录
 	if payResult.PayStatus == orderstatusconst.S {
-		var memberServiceEntity servtype.MemberServiceEntity
-		dbutil.NewDbExecutor(tx.Table("member_service").Where("member_id = ? and service_price_id = ? and member_service_status = 1 and status = 1", serviceOrderEntity.MemberId, serviceOrderEntity.ServicePriceId).Find(&memberServiceEntity))
+		memberServiceEntity := memservrepo.GetByMemIdAndServPriceId(ctx, serviceOrderEntity.MemberId, serviceOrderEntity.ServicePriceId)
 		if memberServiceEntity.ID == 0 {
-			memberServiceEntity = servtype.MemberServiceEntity{
+			memberServiceEntity = &servtype.MemberServiceEntity{
 				MemberId:            serviceOrderEntity.MemberId,
 				ServicePriceId:      serviceOrderEntity.ServicePriceId,
 				OrderId:             serviceOrderEntity.ID,
 				DeadlineTime:        time.Now().AddDate(0, serviceOrderEntity.PurchaseAmount, 0),
 				MemberServiceStatus: 1,
 			}
-			dbutil.NewDbExecutor(tx.Table("member_service").Create(&memberServiceEntity))
+			memservrepo.Create(ctx, memberServiceEntity)
 		} else {
 			memberServiceEntity.OrderId = serviceOrderEntity.ID
-			memberServiceEntity.DeadlineTime = memberServiceEntity.DeadlineTime.AddDate(0, serviceOrderEntity.PurchaseAmount, 0)
-			dbutil.NewDbExecutor(tx.Table("member_service").Where("id = ? and status = 1", memberServiceEntity.ID).Update(map[string]interface{}{
-				"order_id":      memberServiceEntity.OrderId,
-				"deadline_time": memberServiceEntity.DeadlineTime,
-			}))
+			deadLineTime := memberServiceEntity.DeadlineTime
+			if memberServiceEntity.MemberServiceStatus == 0 {
+				deadLineTime = time.Now()
+				memberServiceEntity.MemberServiceStatus = 1
+			}
+			memberServiceEntity.DeadlineTime = deadLineTime.AddDate(0, serviceOrderEntity.PurchaseAmount, 0)
+			memservrepo.UpdateMemServiceStatus(ctx, memberServiceEntity.ID, memberServiceEntity.OrderId, memberServiceEntity.DeadlineTime)
 		}
 	}
 	return Success

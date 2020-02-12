@@ -95,16 +95,14 @@ func cashier(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(reqParam); err != nil {
 		types.InvalidParamPanic("invalid json format!")
 	}
-	ctx = context.WithValue(ctx, "reqParam", reqParam)
-	types.NewRestRestResponse(rw, ppayserv.Cashier(ctx))
+	types.NewRestRestResponse(rw, ppayserv.Cashier(ctx, reqParam))
 }
 
 var GetReceiptCode = types.NewController(url("/getReceiptCode/{qrCodeUrl:\\S+}"), http.MethodGet, getReceiptCode)
 
 func getReceiptCode(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx = context.WithValue(ctx, "qrCodeUrl", vars["qrCodeUrl"])
-	io.Copy(rw, bytes.NewBuffer(ppayserv.GetReceiptCode(ctx)))
+	io.Copy(rw, bytes.NewBuffer(ppayserv.GetReceiptCode(ctx, vars["qrCodeUrl"])))
 }
 
 var UploadReceiptCode = types.NewController(url("/uploadReceiptCode"), http.MethodPost, uploadReceiptCode)
@@ -136,26 +134,25 @@ func uploadReceiptCode(ctx context.Context, rw http.ResponseWriter, req *http.Re
 	if err != nil {
 		types.SystemPanic(fmt.Sprintf("read receiptcode err! reason: %v", err))
 	}
-	ctx = context.WithValue(ctx, "UploadReceiptCodeReq", &ppaytype.UploadReceiptCodeReq{
+	reqParam := &ppaytype.UploadReceiptCodeReq{
 		Operator:       operator,
 		PayeeAccountId: payeeAccountId,
 		PayeeAmount:    payeeAmount,
 		File:           file,
 		FileHeader:     header,
-	})
-	types.NewRestRestResponse(rw, ppayserv.UploadReceiptCode(ctx))
+	}
+	types.NewRestRestResponse(rw, ppayserv.UploadReceiptCode(ctx, reqParam))
 }
 
 // 支付系统回调通知支付结果
 var PayResultNotify = types.NewController(url("/payResultNotify"), http.MethodPost, payResultNotify)
 
 func payResultNotify(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
-	var payResult ppaytype.BizPayResultReq
-	if err := json.NewDecoder(req.Body).Decode(&payResult); err != nil {
+	payResult := &ppaytype.BizPayResultReq{}
+	if err := json.NewDecoder(req.Body).Decode(payResult); err != nil {
 		types.InvalidParamPanic("json invalid!")
 	}
 	logrus.Infof("payResult: %v", payResult)
-	ctx = context.WithValue(ctx, "payResult", &payResult)
 	rw.WriteHeader(http.StatusOK)
-	rw.Write([]byte(servserv.PayResultNotify(ctx)))
+	rw.Write([]byte(servserv.PayResultNotify(ctx, payResult)))
 }

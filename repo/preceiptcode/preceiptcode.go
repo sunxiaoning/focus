@@ -11,8 +11,17 @@ import (
 const (
 	tabName     = "personal_receipt_code"
 	normalQuery = "status = 1"
-	maxAmount   = "9999.99"
+	MaxAmount   = "9999.99"
 )
+
+func GetById(ctx context.Context, id int) *ppaytype.PReceiptCodeEntity {
+	db := getDb(ctx)
+	db = db.Where("id = ?", id)
+	db = db.Where(normalQuery)
+	var receiptCodeEntity ppaytype.PReceiptCodeEntity
+	dbutil.NewDbExecutor(db.Find(&receiptCodeEntity))
+	return &receiptCodeEntity
+}
 
 func GetByAccountIdAndAmount(ctx context.Context, amount string, accountId int) *ppaytype.PReceiptCodeEntity {
 	db := getDb(ctx)
@@ -20,10 +29,19 @@ func GetByAccountIdAndAmount(ctx context.Context, amount string, accountId int) 
 	db = db.Where(normalQuery)
 	var receiptCodeEntity ppaytype.PReceiptCodeEntity
 	dbutil.NewDbExecutor(db.Find(&receiptCodeEntity))
-	if amount != maxAmount && receiptCodeEntity.ID == 0 {
-		return GetByAccountIdAndAmount(ctx, maxAmount, accountId)
-	}
 	return &receiptCodeEntity
+}
+
+func Create(ctx context.Context, receiptCodeEntity *ppaytype.PReceiptCodeEntity) {
+	db := getDb(ctx)
+	dbutil.NewDbExecutor(db.Create(receiptCodeEntity))
+}
+
+func UpdateReceiptCodeUrl(ctx context.Context, id int, qrCodeUrl string) {
+	db := getDb(ctx)
+	db = db.Where("id = ?", id)
+	db = db.Where(normalQuery)
+	dbutil.NewDbExecutor(db.Update("receipt_code_url", qrCodeUrl))
 }
 
 func getDb(ctx context.Context) *gorm.DB {

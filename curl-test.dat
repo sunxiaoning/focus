@@ -9,9 +9,11 @@ curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574016", "MemberId": 999, "ServicePriceId":999, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574017", "MemberId": 9999, "ServicePriceId":3, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
 curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574019", "MemberId": 999, "ServicePriceId":3, "PurchaseAmount":3,"PayChannel":"ALIPAY"}' http://localhost:7001/api/v1/service/createOrder
+curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"OrderNo":"280554233231574021", "MemberId": 999, "ServicePriceId":3, "PurchaseAmount":4,"PayChannel":"WECHATPAY"}' http://localhost:7001/api/v1/service/createOrder
 
 
-curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"payOrderNo":"281288675206104064","outOrderNo":"280554233231574017","orderAmount":"60.00","payAmount":"60.00","payChannel":"ALIPAY","payReason":"购买服务:券,套餐:小微企业套餐,数量：3"}' http://localhost:7001/api/v1/service/cashier
+
+curl -X "POST" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" --data '{"payOrderNo":"288482686069113856","outOrderNo":"280554233231574021","orderAmount":"80.00","payAmount":"80.00","payChannel":"WECHATPAY","payReason":"购买服务:券,套餐:小微企业套餐,数量：4"}' http://localhost:7001/api/v1/service/cashier
 curl -X "GET" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" http://localhost:7001/api/v1/service/getReceiptCode/2019/12/26/281572935636878336.jpg
 
 curl -X "POST" -H "Content-Type: multipart/form-data" -H "accessToken:JRCASt7GYl0d5g5OAKFgiA==" -F "operator=williamsun" -F "payeeAccountId=3452" -F "payeeAmount=5.00"  -F "receiptCode=@\"/Users/william/Documents/算法精解-c语言描述.pdf\""  http://localhost:7001/api/v1/service/uploadReceiptCode

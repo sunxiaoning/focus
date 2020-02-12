@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"focus/cfg"
+	ppaynotifyrepo "focus/repo/ppaynotify"
 	ppayorderrepo "focus/repo/ppayorder"
 	"focus/repo/preceiptaccount"
 	preceiptcoderepo "focus/repo/preceiptcode"
@@ -20,7 +21,6 @@ import (
 	"focus/util/idgen"
 	strutil "focus/util/strs"
 	timutil "focus/util/tim"
-	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
@@ -44,6 +44,7 @@ var ReceiptCodeMimeTypes = map[string]bool{
 	"image/png":  true,
 }
 
+// 生成支付订单
 func CreateOrder(ctx context.Context, reqParam *ppaytype.CreateOrderReq) *ppaytype.CreateOrderRes {
 	receiptCodeEntity, payOrder := createOrderValidation(ctx, reqParam)
 	payOrderNo, err := idgenutil.NextId()
@@ -105,7 +106,12 @@ func createOrderValidation(ctx context.Context, reqParam *ppaytype.CreateOrderRe
 	}
 	receiptCodeEntity := preceiptcoderepo.GetByAccountIdAndAmount(ctx, reqParam.PayAmount, reqParam.PayeeAccountId)
 	if receiptCodeEntity.ID == 0 {
-		types.NotFoundPanic("not find PayeeAccount qrcode!")
+
+		// 兜底code
+		receiptCodeEntity = preceiptcoderepo.GetByAccountIdAndAmount(ctx, preceiptcoderepo.MaxAmount, reqParam.PayeeAccountId)
+		if receiptCodeEntity.ID == 0 {
+			types.NotFoundPanic("not find PayeeAccount qrcode!")
+		}
 	}
 	payOrder := ppayorderrepo.GetByOutTradeNo(ctx, reqParam.OutTradeNo)
 	if payOrder.ID != 0 {
@@ -114,37 +120,26 @@ func createOrderValidation(ctx context.Context, reqParam *ppaytype.CreateOrderRe
 	return receiptCodeEntity, payOrder
 }
 
-func GetOrderDetailByOrderNo(ctx context.Context) *ppaytype.OrderDetail {
-	payOrderNo := ctx.Value("payOrderNo").(string)
-	payOrderEntity := getPayOrderEntity(payOrderNo)
-	var receiptCodeEntity ppaytype.PReceiptCodeEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("id = ? and status = 1", payOrderEntity.ReceiptCodeId).Find(&receiptCodeEntity))
+// 根据订单号查询支付订单详情
+func GetOrderDetailByOrderNo(ctx context.Context, payOrderNo string) *ppaytype.OrderDetail {
+	payOrderEntity := ppayorderrepo.GetByOrderNo(ctx, payOrderNo)
+	receiptCodeEntity := preceiptcoderepo.GetById(ctx, payOrderEntity.ReceiptCodeId)
 	if receiptCodeEntity.ID == 0 {
 		types.ErrPanic(types.DataDirty, fmt.Sprintf("receiptcode id=%v not exists!", payOrderEntity.ReceiptCodeId))
 	}
-	var receiptAccountEntity ppaytype.PReceiptAccountEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_account").Where("id = ? and status = 1", receiptCodeEntity.PayeeAccountId).Find(&receiptAccountEntity))
+	receiptAccountEntity := preceiptaccountrepo.GetById(ctx, receiptCodeEntity.PayeeAccountId)
 	if receiptAccountEntity.ID == 0 {
 		types.ErrPanic(types.DataDirty, fmt.Sprintf("receiptaccount id=%v not exists!", receiptCodeEntity.PayeeAccountId))
 	}
 	return &ppaytype.OrderDetail{
 		PPayOrderEntity:       payOrderEntity,
 		ReceiptCodeUrl:        receiptCodeEntity.ReceiptCodeUrl,
-		PReceiptAccountEntity: &receiptAccountEntity,
+		PReceiptAccountEntity: receiptAccountEntity,
 	}
 }
 
-func getPayOrderEntity(payOrderNo string) *ppaytype.PPayOrderEntity {
-	var payOrderEntity ppaytype.PPayOrderEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("pay_order_no = ? and status = 1", payOrderNo).Find(&payOrderEntity))
-	if payOrderEntity.ID == 0 {
-		types.InvalidParamPanic(fmt.Sprintf("payOrder no=%v not exists!", payOrderNo))
-	}
-	return &payOrderEntity
-}
-
-func Cashier(ctx context.Context) tx.TFunRes {
-	reqParam := ctx.Value("reqParam").(*ppaytype.CashierReq)
+// 支付收银台
+func Cashier(ctx context.Context, reqParam *ppaytype.CashierReq) tx.TFunRes {
 	if strutil.IsBlank(reqParam.PayOrderNo) {
 		types.InvalidParamPanic("payOrderNo can't be empty!")
 	}
@@ -169,15 +164,14 @@ func Cashier(ctx context.Context) tx.TFunRes {
 	if types.PayChannels()[reqParam.PayChannel] == nil {
 		types.ErrPanic(types.PayChannelNotSupport, "payChannel not support!")
 	}
-	ctx = context.WithValue(ctx, "payOrderNo", reqParam.PayOrderNo)
-	payOrderDetail := GetOrderDetailByOrderNo(ctx)
+	payOrderDetail := GetOrderDetailByOrderNo(ctx, reqParam.PayOrderNo)
 	checkReqParamVal(reqParam, payOrderDetail)
 	if payOrderDetail.PayStatus != orderstatusconst.I && payOrderDetail.PayStatus != orderstatusconst.P {
 		return &ppaytype.CashierRes{
 			OrderStatus: payOrderDetail.PayStatus,
 		}
 	}
-	payOrderUpdated := SubmitPayOrder(context.WithValue(ctx, "payOrderNo", reqParam.PayOrderNo))
+	payOrderUpdated := submitPayOrder(ctx, reqParam.PayOrderNo)
 	return &ppaytype.CashierRes{
 		OrderStatus: payOrderUpdated.PayStatus,
 		MaxTimeout:  timutil.DefFormat(payOrderDetail.StartTime.Add(time.Minute * PayOrderTimeOut)),
@@ -192,16 +186,13 @@ func checkReqParamVal(param *ppaytype.CashierReq, order *ppaytype.OrderDetail) {
 	}
 }
 
-func SubmitPayOrder(ctx context.Context) *ppaytype.PPayOrderEntity {
-	payOrderNo := ctx.Value("payOrderNo").(string)
-	payOrderEntity := getPayOrderEntity(payOrderNo)
-	updated := dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_pay_order").Where("pay_order_no = ? and pay_status = 'I' and status = 1", payOrderEntity.PayOrderNo).Update("pay_status", orderstatusconst.P)).RowsAffected()
+func submitPayOrder(ctx context.Context, payOrderNo string) *ppaytype.PPayOrderEntity {
+	updated := ppayorderrepo.Submit(ctx, payOrderNo)
 	logrus.Infof("update payOrder count=%v", updated)
-	return getPayOrderEntity(payOrderNo)
+	return ppayorderrepo.GetByOrderNo(ctx, payOrderNo)
 }
 
-func GetReceiptCode(ctx context.Context) []byte {
-	qrCodeUrl := ctx.Value("qrCodeUrl").(string)
+func GetReceiptCode(ctx context.Context, qrCodeUrl string) []byte {
 	if !fileutil.PathExist(path.Join(cfg.Cfg.Server.RootFilePath, ReceiptCodeRootPath, qrCodeUrl)) {
 		types.NotFoundPanic(fmt.Sprintf("%s not find!", qrCodeUrl))
 	}
@@ -212,8 +203,7 @@ func GetReceiptCode(ctx context.Context) []byte {
 	return content
 }
 
-func UploadReceiptCode(ctx context.Context) *ppaytype.UploadReceiptCodeRes {
-	req := ctx.Value("UploadReceiptCodeReq").(*ppaytype.UploadReceiptCodeReq)
+func UploadReceiptCode(ctx context.Context, req *ppaytype.UploadReceiptCodeReq) *ppaytype.UploadReceiptCodeRes {
 	var destFile *os.File
 	defer func() {
 		req.File.Close()
@@ -249,18 +239,17 @@ func UploadReceiptCode(ctx context.Context) *ppaytype.UploadReceiptCodeRes {
 	if err != nil {
 		types.SystemPanic(fmt.Sprintf("save receiptcode err! reason: %v", err))
 	}
-	var receiptCodeEntity ppaytype.PReceiptCodeEntity
-	dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("payee_account_id = ? and payee_amount = ? and status = 1", req.PayeeAccountId, req.PayeeAmount).Find(&receiptCodeEntity))
+	receiptCodeEntity := preceiptcoderepo.GetByAccountIdAndAmount(ctx, req.PayeeAmount, req.PayeeAccountId)
 	if receiptCodeEntity.ID == 0 {
-		receiptCodeEntity = ppaytype.PReceiptCodeEntity{
+		receiptCodeEntity = &ppaytype.PReceiptCodeEntity{
 			ReceiptCodeUrl: path.Join(savePath, saveName),
 			PayeeAmount:    req.PayeeAmount,
 			PayeeAccountId: req.PayeeAccountId,
 			Operator:       req.Operator,
 		}
-		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Create(&receiptCodeEntity))
+		preceiptcoderepo.Create(ctx, receiptCodeEntity)
 	} else {
-		dbutil.NewDbExecutor(cfg.FocusCtx.DB.Table("personal_receipt_code").Where("id = ? and status = 1", receiptCodeEntity.ID).Update("receipt_code_url", path.Join(savePath, saveName)))
+		preceiptcoderepo.UpdateReceiptCodeUrl(ctx, receiptCodeEntity.ID, path.Join(savePath, saveName))
 	}
 	return &ppaytype.UploadReceiptCodeRes{
 		ReceiptCodeId:  receiptCodeEntity.ID,
@@ -269,7 +258,6 @@ func UploadReceiptCode(ctx context.Context) *ppaytype.UploadReceiptCodeRes {
 }
 
 func ResultNotifyTx(ctx context.Context) tx.TFunRes {
-	tx := ctx.Value("tx").(*gorm.DB)
 	payNotifyReq := ctx.Value("payNotifyReq").(*ppaytype.PayResultNotifyReq)
 	if strutil.IsBlank(payNotifyReq.PayChannel) {
 		types.InvalidParamPanic("payChannel can't be empty!")
@@ -293,35 +281,32 @@ func ResultNotifyTx(ctx context.Context) tx.TFunRes {
 		types.InvalidParamPanic("successTime is invalid!")
 	}
 	logrus.Infof("payNotifyReq: %v", payNotifyReq)
-	var receiptAccountEntity ppaytype.PReceiptAccountEntity
-	dbutil.NewDbExecutor(tx.Table("personal_receipt_account").Where("id = ? and status = 1", payNotifyReq.PayeeAccountId).Find(&receiptAccountEntity))
+	receiptAccountEntity := preceiptcoderepo.GetById(ctx, payNotifyReq.PayeeAccountId)
 	if receiptAccountEntity.ID == 0 {
 		types.NotFoundPanic(fmt.Sprintf("receiptAccount id =%s not exists!", payNotifyReq.PayeeAccountId))
 	}
-	var payOrderEntity ppaytype.PPayOrderEntity
-	dbutil.NewDbExecutor(tx.Table("personal_pay_order").Where("pay_amount = ? and pay_channel = ? and pay_status = 'P' and status = 1", payNotifyReq.PayAmount, payNotifyReq.PayChannel).Find(&payOrderEntity))
+	payOrderEntity := ppayorderrepo.GetWaittingByPayChannelAndAmount(ctx, payNotifyReq.PayAmount, payNotifyReq.PayChannel)
 	if payOrderEntity.ID == 0 {
 		types.NotFoundPanic("payOrder not exists!")
 	}
-	var receiptCodeEntity ppaytype.PReceiptCodeEntity
-	dbutil.NewDbExecutor(tx.Table("personal_receipt_code").Where("id = ? and status = 1", payOrderEntity.ReceiptCodeId).Find(&receiptCodeEntity))
+	receiptCodeEntity := preceiptcoderepo.GetById(ctx, payOrderEntity.ReceiptCodeId)
 	if receiptCodeEntity.ID == 0 || receiptCodeEntity.PayeeAccountId != payNotifyReq.PayeeAccountId {
 		types.NotFoundPanic("payOrder not exists!")
 	}
-	updateResult := dbutil.NewDbExecutor(tx.Table("personal_pay_order").Where("id = ? and pay_status = 'P' and status = 1", payOrderEntity.ID).Update(ppaytype.PPayOrderEntity{PayStatus: orderstatusconst.S, FinishTime: time.Now()})).RowsAffected()
 	result := &ppaytype.PayResultNotifyRes{
 		PayStatus: orderstatusconst.S,
 	}
+	updateResult := ppayorderrepo.UpdatePayResult(ctx, payOrderEntity.ID, orderstatusconst.S)
 	if updateResult != 1 {
 		logrus.Infof("payOrder payOrderNo=%s has been processed!", payOrderEntity.PayOrderNo)
 		return result
 	}
 	payOrderEntity.PayStatus = orderstatusconst.S
-	InsertPayResultNotify(tx, payOrderEntity)
+	InsertPayResultNotify(ctx, payOrderEntity)
 	return result
 }
 
-func InsertPayResultNotify(db *gorm.DB, payOrderEntity ppaytype.PPayOrderEntity) {
+func InsertPayResultNotify(ctx context.Context, payOrderEntity *ppaytype.PPayOrderEntity) {
 
 	// 发送消息通知业务方支付成功
 	notifyContent := ppaytype.BizPayResultReq{
@@ -338,7 +323,7 @@ func InsertPayResultNotify(db *gorm.DB, payOrderEntity ppaytype.PPayOrderEntity)
 		NotifyContent: string(notifyContentResult),
 		CreatedTime:   time.Now(),
 	}
-	dbutil.NewDbExecutor(db.Table("personal_pay_notify").Create(ppayNotifyEntity))
+	ppaynotifyrepo.Create(ctx, ppayNotifyEntity)
 }
 
 func NotifyBiz() {
