@@ -2,11 +2,11 @@ package gtwctl
 
 import (
 	"context"
-	"fmt"
 	"focus/types"
 	userconsts "focus/types/consts/user"
 	gtwtype "focus/types/gtw"
 	httputil "focus/util/http"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
@@ -22,9 +22,9 @@ func gtw(ctx context.Context, rw http.ResponseWriter, req *http.Request) {
 	servUrl := ApiServer + gtwReq.ServUrl
 	reqHeaders := make(map[string]string)
 	reqHeaders[userconsts.AccessToken] = req.Header.Get(userconsts.AccessToken)
-	fmt.Println(servUrl)
+	logrus.Infof("servUrl: %s", servUrl)
 	code, resp, err := httputil.PostJsonWithHeader(servUrl, reqHeaders, gtwReq.BizContent, time.Second*10)
-	fmt.Println(code, string(resp), err)
+	logrus.Infof("code: %v, resp: %v, err: %v", code, string(resp), err)
 	if code != http.StatusOK || err != nil {
 		types.SystemPanic(err.Error())
 	}

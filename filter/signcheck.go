@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"focus/cfg"
+	memberrepo "focus/repo/member"
 	"focus/types"
 	gtwtype "focus/types/gtw"
 	membertype "focus/types/member"
@@ -31,8 +32,10 @@ func signCheck(ctx context.Context, rw http.ResponseWriter, req *http.Request) c
 	if err := json.NewDecoder(req.Body).Decode(&gtwReq); err != nil {
 		types.InvalidParamPanic("invalid json format!")
 	}
-	validateParams(&gtwReq)
-	_, pubKeyStr := getMemPriKey(gtwReq.MemberId)
+
+	// OpenApi参数校验
+	validateParams(ctx, &gtwReq)
+	_, pubKeyStr := getMemPriKey(ctx, gtwReq.MemberId)
 	if pubKeyStr == "" {
 		types.InvalidParamPanic(fmt.Sprintf("member: %s, priKey not exists!", gtwReq.MemberId))
 	}
@@ -48,7 +51,7 @@ func signCheck(ctx context.Context, rw http.ResponseWriter, req *http.Request) c
 	return ctx
 }
 
-func getMemPriKey(memberId string) (string, string) {
+func getMemPriKey(ctx context.Context, memberId string) (string, string) {
 	var priKey, pubKey string
 	defer func() {
 		if r := recover(); r != nil {
@@ -61,6 +64,10 @@ func getMemPriKey(memberId string) (string, string) {
 	}()
 	mId, err := strconv.Atoi(memberId)
 	if err != nil {
+		types.InvalidParamPanic(fmt.Sprintf("invalid memberId:%s", memberId))
+	}
+	memberEntity := memberrepo.GetById(ctx, mId)
+	if memberEntity.ID == 0 {
 		types.InvalidParamPanic(fmt.Sprintf("invalid memberId:%s", memberId))
 	}
 	memberPriKeyCache, ok := cfg.FocusCtx.MemberSecretKey.Load(mId)
@@ -87,7 +94,7 @@ func getMemPriKey(memberId string) (string, string) {
 	return priKey, pubKey
 }
 
-func validateParams(g *gtwtype.GtWReq) {
+func validateParams(ctx context.Context, g *gtwtype.GtWReq) {
 	if strutil.IsBlank(g.Timestamp) {
 		types.InvalidParamPanic("timestamp param can't be empty!")
 	}

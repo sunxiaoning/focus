@@ -17,6 +17,7 @@ var UserIdentityAuthor = &types.Filter{
 	Process:      userIdentityAuth,
 }
 
+// 用户身份校验
 func userIdentityAuth(ctx context.Context, rw http.ResponseWriter, req *http.Request) context.Context {
 	accessTokenCookie, err := req.Cookie(userconsts.AccessToken)
 	if err != nil || accessTokenCookie == nil {

@@ -13,3 +13,9 @@ type MemberEntity struct {
 	ID       int
 	NickName string
 }
+
+type CurrentUserInfo struct {
+	ID       int64
+	MemberId int64
+	UserName string
+}
