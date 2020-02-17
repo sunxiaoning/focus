@@ -16,7 +16,7 @@ var alphaServer = &ServerCfg{
 var prodServer = &ServerCfg{
 	ListenPort:   7001,
 	Env:          "prod",
-	LogFilePath:  "/Users/william/logs/focus/app.log",
+	LogFilePath:  "/usr/local/logs/focus/app.log",
 	SecretKey:    prodSecretKey,
 	RootFilePath: getRootFilePath(),
 }
